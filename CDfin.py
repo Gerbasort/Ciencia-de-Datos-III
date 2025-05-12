@@ -1009,6 +1009,7 @@ class PCmodel(Modelo):
 #@title Modelos específicos
 
 class RL(RQmodel,PQmodel,PCmodel):
+    
     def __init__(self,df,predictor,respuesta,**codigos):
         '''
         Códigos de las variables cualitativas
@@ -1016,6 +1017,7 @@ class RL(RQmodel,PQmodel,PCmodel):
         super().__init__(df=df,predictor=predictor,respuesta=respuesta)
         self.codigos = codigos
         self.__model(**codigos)
+
     def __model(self,**codigos):
         '''
         codigos:  escribe todas las columnas cualitativas, aunque no se
@@ -1028,11 +1030,22 @@ class RL(RQmodel,PQmodel,PCmodel):
             - self.modelo
         '''
         import statsmodels.api as sm
+        import statsmodels.formula.api as smf
+        import pandas as pd
         X = self.biny_pred(**codigos)
-        X = sm.add_constant(X)
+        self.pred_bin = X
+
+        formula = self.respuestas[0]+'~'
+        columnas = X.columns
+        formula += columnas[0]
+        for columna in columnas[1:]:
+            formula += '+'+columna
+
         y = self.respuestas_df
-        modelo = sm.OLS(y,X)
+        DF = pd.concat([y, X],axis=1)
+        modelo = smf.ols(formula,data=DF)
         resultado = modelo.fit()
+
         self.resultado = resultado
         self.modelo = modelo
 
@@ -1043,14 +1056,16 @@ class RL(RQmodel,PQmodel,PCmodel):
         param_PVAL = resultado.pvalues
         R_squared = resultado.rsquared
         R_squared_adj = resultado.rsquared_adj
+
         self.set_param('rsquared','VAL',R_squared)  # no sirve para distinta cantidad de regresoras
         self.set_param('rsquared_adj','VAL',R_squared_adj)  # sirve para distinta cantidad de regresoras
+
         # Guardamos los datos de los parámetros
         for i in range(len(param_names)):
             self.set_param(param_names[i],'VAL',param_values[i])
             self.set_param(param_names[i],'SE',param_SE[i])
             self.set_param(param_names[i],'PVAL',param_PVAL[i])
-        
+
         self.funcion = lambda vect : float(param_values[0] + np.dot(vect,param_values[1:]))
 
     def ttest(self,param,value,conf,condition='equal'):
@@ -1126,8 +1141,7 @@ class RL(RQmodel,PQmodel,PCmodel):
         alfa = 1-conf
         if np.isscalar(value):
             value = [value]
-        value = pd.DataFrame({'new': value}).T
-        value = sm.add_constant(value,has_constant='add')
+        value = pd.DataFrame([value],columns=self.pred_bin.columns)
         pred = self.resultado.get_prediction(value)
         summary = pred.summary_frame(alpha=alfa)
         low = summary['obs_ci_lower'].iloc[0]
@@ -1139,37 +1153,33 @@ class RL(RQmodel,PQmodel,PCmodel):
         import numpy as np
         if np.isscalar(value):
             value = [value]
-        value = pd.DataFrame({'new': value}).T
-        value = sm.add_constant(value,has_constant='add')
+        value = pd.DataFrame([value],columns=self.pred_bin.columns)
         pred = self.resultado.get_prediction(value)
         summary = pred.summary_frame()
         mean_se = self.SE_Mpred(value)
         residual_se = self.SE_residuos()
         obs_SE = np.sqrt(mean_se**2 + residual_se**2)
         return obs_SE
-    
+
     def conf_Mpred(self,value,conf):
         import statsmodels.api as sm
         alfa = 1-conf
         if np.isscalar(value):
             value = [value]
-        value = pd.DataFrame({'new': value}).T
-        value = sm.add_constant(value,has_constant='add')
+        value = pd.DataFrame([value],columns=self.pred_bin.columns)
         pred = self.resultado.get_prediction(value)
         summary = pred.summary_frame(alpha=alfa)
         low = summary['mean_ci_lower'].iloc[0]
         up = summary['mean_ci_upper'].iloc[0]
         return (low,up)
-    
+
     def SE_Mpred(self,value):
         import statsmodels.api as sm
         import numpy as np
         if np.isscalar(value):
             value = [value]
-        value = pd.DataFrame({'new': value}).T
-        value = sm.add_constant(value,has_constant='add')
+        value = pd.DataFrame([value],columns=self.pred_bin.columns)
         pred = self.resultado.get_prediction(value)
         summary = pred.summary_frame()
         SE = summary['mean_se'].iloc[0]
         return SE
-
