@@ -519,6 +519,18 @@ class CualDatos(Datos):
         ======================================
         '''
         return self.__bin_df(nombre,**codigos)
+
+    def clases(self):
+        '''
+        ================================
+        devuelve una lista de las clases
+        de la categoría
+        ================================
+        '''
+        datos = pd.Series(self[:,0])
+        clases = set(datos)
+        return list(clases)
+
 class QuantDatos(Datos):
     def __init__(self,shape,dtype=object,buffer=None,offset=0,strides=None,order=None):
         super().__init__(shape=shape,dtype=dtype,buffer=buffer,offset=offset,strides=strides,order=order)
@@ -776,13 +788,19 @@ class Dataframe(pd.DataFrame):
             if show:
                 plt.show()
             return scatter
-        if kind == 'line':
+        elif kind == 'line':
             line, = self.plot(kind=kind,x=X,y=Y)
             if show:
                 plt.show()
             return line
+        elif kind == 'boxplot':
+            self.boxplot(by=X,column=Y)
+            if show:
+              plt.show()
         else:
             self.plot(kind=kind,x=X,y=Y)
+            if show:
+                plt.show()
 
 #@title Modelo
 class Modelo:
@@ -890,16 +908,17 @@ class Modelo:
     #       Métodos gráficos                             #
     #====================================================#
     def grafico2D(self,X,Y,kind='scatter',show=False,add=False):
-        print(f'Se ejecuta grafico2D dentro del modelo')
-        print(f'{X=}')
-        print(f'{Y=}')
+        #print(f'Se ejecuta grafico2D dentro del modelo')
+        #print(f'{X=}')
+        #print(f'{Y=}')
         self.__df.grafico2D(X=X,Y=Y,kind=kind,show=show,add=add)
     
     def grafico_modelo(self,show=False,add=False,**codigos):
         '''
         codigos: códigos de la matriz binaria de predictores 
         '''
-        pred = self.biny_pred(**codigos)
+        pred = self.biny_pred(**codigos)    # va a ser un pandas.DataFrame/Series
+        #print(f'pred:\n {pred}')    ###
         assert len(pred.columns) <= 2, f'Demasiadas variables predictoras: {len(pred.columns)}'
         resp = self.respuestas_df
         # Caso 2D:
@@ -908,8 +927,10 @@ class Modelo:
             if not add:
                 plt.ioff()
             scatter = self.grafico2D(X=pred.columns[0],Y=resp.columns[0],show=False,add=True)
-            a = min(pred['experiencia'])
-            b = max(pred['experiencia'])
+            a = min(pred.values)
+            b = max(pred.values)
+            #print(f'min(pred):\n {a}')  ####
+            #print(f'max(pred):\n {b}')  ####
             line, = plt.plot([a,b],[self.predict(a),self.predict(b)],'-',color='orange')
             if show:
                 plt.show()
@@ -1009,7 +1030,7 @@ class PCmodel(Modelo):
 #@title Modelos específicos
 
 class RL(RQmodel,PQmodel,PCmodel):
-    
+
     def __init__(self,df,predictor,respuesta,**codigos):
         '''
         Códigos de las variables cualitativas
@@ -1066,7 +1087,22 @@ class RL(RQmodel,PQmodel,PCmodel):
             self.set_param(param_names[i],'SE',param_SE[i])
             self.set_param(param_names[i],'PVAL',param_PVAL[i])
 
-        self.funcion = lambda vect : float(param_values[0] + np.dot(vect,param_values[1:]))
+        def f(value):
+            import numpy as np
+            import pandas as pd
+            if np.isscalar(value):
+                value = [value]
+            value = pd.DataFrame([value],columns=self.pred_bin.columns)
+
+            #print(f'value:\n {value}')      ###
+            #rint(f'type(value):\n {type(value)}')  ###
+
+            pred = self.resultado.get_prediction(value)
+            summary = pred.summary_frame()
+            return summary['mean'].iloc[0]
+
+        self.funcion = f
+        #self.funcion = lambda vect : float(param_values[0] + np.dot(vect,param_values[1:]))
 
     def ttest(self,param,value,conf,condition='equal'):
             '''
