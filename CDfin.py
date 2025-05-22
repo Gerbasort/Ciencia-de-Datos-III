@@ -907,7 +907,6 @@ class Modelo:
         self.funcion = None # la función de predicción
         self.__parametros = {}  # {'param':{'VAL','DIST','MEAN','SE'}}
         self.longitud = self.__df.shape[0]
-        self.codigos = None
     #============================================#
     #     Métodos de alteración                  #
     #============================================#
@@ -969,19 +968,6 @@ class Modelo:
             else:
                 return self.__df
 
-    def biny_pred(self,**codigos):
-        '''
-        Devuelve matriz binaria de categorias de las predictoras
-        '''
-        return self.predictores_df.biny(**codigos)
-    
-    def biny_res(self,**codigos):
-        '''
-        Devuelve matriz binaria de categorias de las respuestas
-        '''
-
-        return self.respuestas_df.biny(**codigos)
-
     def df(self):
         output = self.__df
         return output
@@ -995,19 +981,34 @@ class Modelo:
         #print(f'{Y=}')
         self.__df.grafico2D(X=X,Y=Y,kind=kind,show=show,add=add)
 
-    def grafico_modelo(self,show=False,add=False,**codigos):
+    def grafico_modelo(self,show=False,add=False):
         '''
-        codigos: códigos de la matriz binaria de predictores
         '''
         import numpy as np
+        codigos_pred = None
+        codigos_res = None  # (?)
 
-        if self.codigos != None:
-            codigos = self.codigos
-        print(codigos)
-
-        pred = self.biny_pred(**codigos)
+        #######################################
+        # excepciones
+        try:
+            self.codigos_pred
+        except:
+            pass
+        else:
+            codigos_pred = self.codigos_pred
+        
+        try:
+            self.codigos_res
+        except:
+            pass
+        else:
+            codigos_res = self.codigos_res
+        ########################################
+  
+        pred = self.biny_pred(**codigos_pred)
         assert len(pred.columns) <= 2, f'Demasiadas variables predictoras: {len(pred.columns)}'
         resp = self.respuestas_df
+    
         # Caso 2D:
         if len(pred.columns) == 1:
             import matplotlib.pyplot as plt
@@ -1023,7 +1024,8 @@ class Modelo:
             if show:
                 plt.show()
             return scatter,line
-        
+
+        # Caso 3D:
         if len(pred.columns) == 2:
             pass
 
@@ -1036,10 +1038,9 @@ class RQmodel(Modelo):
     ################################################
     Por ahora sólo respuestas unidimensionales
     '''
-    def __init__(self,*args,**kwargs):
+    def __init__(self,df,predictor,respuesta):
         # los predictores pueden ser vectores
-        super().__init__(*args,**kwargs)
-        pass
+        super().__init__(df=df,predictor=predictor,respuesta=respuesta)
 
     def __calc_residuos(self,**codigos): ### test vector de predictores y de respuestas
         '''
@@ -1135,8 +1136,8 @@ class PQmodel(Modelo):
     predictor: cuantitativo
     ################################################
     '''
-    def __init__(self,*args,**kwargs):
-        super().__init__(*args,**kwargs)
+    def __init__(self,df,predictor,respuesta):
+        super().__init__(df=df,predictor=predictor,respuesta=respuesta)
 
 class RCmodel(Modelo):
     '''
@@ -1144,7 +1145,15 @@ class RCmodel(Modelo):
     respuesta: cualitativa
     ################################################
     '''
+    def __init__(self,df,predictor,respuesta,**codigos):
+        self.Rcodigos = codigos
+        super().__init__(df=df,predictor=predictor,respuesta=respuesta)
 
+    def biny_res(self,**codigos):
+        '''
+        Devuelve matriz binaria de categorias de las respuestas
+        '''
+        return self.respuestas_df.biny(**codigos)
     # Agregar binarización de las respuestas acá
 
 class PCmodel(Modelo):
@@ -1153,10 +1162,16 @@ class PCmodel(Modelo):
     predictor: cualitativo
     ################################################
     '''
-    def __init__(self,*args,**kwargs):
+    def __init__(self,df,predictor,respuesta,**codigos):
         # los predictores pueden ser vectores
-        super().__init__(*args,**kwargs)
-        pass
+        self.Pcodigos = codigos
+        super().__init__(df=df,predictor=predictor,respuesta=respuesta)
+  
+    def biny_pred(self,**codigos):
+        '''
+        Devuelve matriz binaria de categorias de las predictoras
+        '''
+        return self.predictores_df.biny(**codigos)
 
     # Agregar binarización de las predictoras acá
 
@@ -1382,15 +1397,20 @@ class RL(RQmodel,PQmodel,PCmodel):
 
 class Log(RCmodel,PQmodel,PCmodel):
     def __init__(self,df,predictor,respuesta,**codigos):
-        super().__init__(df=df,predictor=predictor,respuesta=respuesta)
         self.codigos = codigos
-        self.__model(**codigos)
+        self.codigos_res = {codigo:codigos[codigo] for codigo in codigos if codigo in respuesta}
+        self.codigos_pred = {codigo:codigos[codigo] for codigo in codigos if codigo in predictor}
+        RCmodel.__init__(self,df=df,predictor=predictor,respuesta=respuesta,**self.codigos_res)
+        PCmodel.__init__(self,df=df,predictor=predictor,respuesta=respuesta,**self.codigos_pred)
+        PQmodel.__init__(self,df=df,predictor=predictor,respuesta=respuesta)
+        self.codigos = codigos
+        self.__model()
         pass
-    def __model(self,**codigos):
+    def __model(self):
         import statsmodels.api as sm
         import statsmodels.formula.api as smf
         import pandas as pd
-        X = self.biny_pred(**codigos)
+        X = self.biny_pred(**self.codigos_pred)
         self.pred_bin = X
 
         # Generamos la fórmula de regresión, puesto que sino nos perdemos el atributo design_info
@@ -1400,7 +1420,7 @@ class Log(RCmodel,PQmodel,PCmodel):
         for columna in columnas[1:]:
             formula += '+'+columna
 
-        y = self.biny_res(**codigos)
+        y = self.biny_res(**self.codigos_res)
         DF = pd.concat([y, X],axis=1)
 
         modelo = smf.logit(formula,data=DF) # ajuste Log
