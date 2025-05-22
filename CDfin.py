@@ -377,6 +377,7 @@ class Datos(np.ndarray):
         return output
 
 #@title Cualitative and Quantitative
+#@title Cualitative and Quantitative
 class CualDatos(Datos):
     def __init__(self,shape,dtype=object,buffer=None,offset=0,strides=None,order=None):
         super().__init__(shape=shape,dtype=dtype,buffer=buffer,offset=offset,strides=strides,order=order)
@@ -450,7 +451,7 @@ class CualDatos(Datos):
             for clase in codigos:
                 assert type(codigos[clase]) != str and type(codigos[clase]) != np.str_ and type(codigos[clase]) != float and type(codigos[clase]) != np.float64 and type(codigos[clase]) != int and type(codigos[clase]) != np.int_, 'Se debe codificar con tuplas'
                 assert clase in clases, f'La clase {clase} no existe'
-                #assert len(set(codigos.keys())) == len(set(codigos.values())), 'Hay códigos repetidos' #### guarda REPETITION
+                #assert len(set(codigos.keys())) == len(set(codigos.values())), 'Hay códigos repetidos' ####### GUARDA REPETITION
                 assert len(set(codigos[clase])) <= 2 and (0 in set(codigos[clase]) or 1 in set(codigos[clase])), f'La clase {clase} no tiene un código binario'
             for clase in clases:
                 assert clase in codigos, f'No se proveyó código para la clase {clase}'
@@ -476,6 +477,14 @@ class CualDatos(Datos):
         binary = self.biny(**codigos)
         output_df = pd.DataFrame()
         col_num = len(binary[0,0])
+        print(f'{codigos=}')      ###
+        if col_num == 1:  
+            new_col = np.empty((0,1))
+            for j in range(len(binary)):
+                new_col = np.vstack([new_col,binary[j,0][0]])
+            new_col = new_col.reshape(-1)
+            output_df.insert(0,nombre,new_col)  # si se agrega sólo una columna, entonces no se le pone números al nombre
+            return output_df
         for i in range(col_num):
             # Necesitamos crear la nueva columna
             new_col = np.empty((0,1))
@@ -639,7 +648,7 @@ class QuantDatos(Datos):
         if show:
             plt.show()
         return line
-    
+
     def qqPlot(self,distribucion,*param,cuantiles=None,show=False,add=False):
         '''
         #########################################################
@@ -748,7 +757,8 @@ class Dataframe(pd.DataFrame):
         '''
         output = pd.DataFrame(self)
         for columna in codigos:
-            # chequeamos que están los códigos de la columna 
+            # chequeamos que están los códigos de la columna
+            #print(f'{codigos[columna]=}') ###
             if codigos[columna] == None:
                 clases = list(set(output[columna]))
                 col_code = {}
@@ -758,10 +768,11 @@ class Dataframe(pd.DataFrame):
                 for i in range(len(clases)):
                     col_code.update({clases[i]:code})
                     code = follow(code)
-                
+
             cualitative = CualDatos((self.shape[0],1),dtype=object)
             cualitative[:,0] = output[columna]
             cual_biny_df = cualitative.biny_df(nombre=columna,**codigos[columna])  # dataframe binarizado tipo DataFrame
+            #print(f'{cual_biny_df=}')   ###
             # necesitamos desdoblar esta codificación en varias columnas
             col_num = cual_biny_df.shape[1] # cantidad de columnas
             col_index = output.columns.get_loc(columna) # índice de la columna, donde insertaremos el dataframe binarizado
@@ -773,7 +784,7 @@ class Dataframe(pd.DataFrame):
 
     def grafico2D(self,X,Y,kind='scatter',show=False,add=False):
         '''
-        Recibe: 
+        Recibe:
             - X: columna del eje X
             - Y: columna del eje Y
             - col: columna de coloreo
@@ -800,8 +811,71 @@ class Dataframe(pd.DataFrame):
         else:
             self.plot(kind=kind,x=X,y=Y)
             if show:
-                plt.show()
+              plt.show()
+    
+    def prob_joint(self,X,Y):
+        '''
+        ================================================
+        Muestra las probabilidades conjuntas de cada una 
+        de las clases de las categorías X e Y.
+        ================================================
+        Ej:   X:  {male, female}
+              Y:  {smoker,nonsmoker}
+        P(male y smoker), P(female y nonsmoker), etc.
+                  male  | female
+        smoker    0.25  | 0.10  
+        nonsmoker 0.60  | 0.05
+        ------------------------------------------------
+        Asume:
+            - X e Y son categóricas
+        '''
+        import pandas as pd
+        joint_freq = pd.crosstab(self[X], self[Y])
+        joint_prob = joint_freq / joint_freq.to_numpy().sum()
+        print('----------------------------------')
+        print(f'    P({X} and {Y})    ')
+        print(joint_prob)
+    
+    def prob(self,category):
+        '''
+        ===============================================
+        Muestra las probabilidades marginales de una
+        categoría
+        ===============================================
+        Ej: category:  {male, female}
+        -----------------------------------------------
+        Asume:
+            - X e Y son categóricas
+        '''
+        import pandas as pd
+        joint_freq = pd.crosstab(self[category],columns='count')
 
+        total = joint_freq.to_numpy().sum()
+
+        joint_prob = joint_freq / total
+
+        print('--------------------------------')
+        print(f'    P({category})   ')
+        print(joint_prob)
+    
+    def prob_cond(self,X,Y):
+        '''
+        =============================================
+        Realiza la probabilidad condicional de X
+        dado Y
+        =============================================
+        Ej: X:  {smoker, nonsmoker}
+            Y:  {male, female}
+        P(smoker|male), P(smoker|female), etc.
+        '''
+        import pandas as pd
+        joint_freq = pd.crosstab(self[Y], self[X])
+        joint_prob = joint_freq / joint_freq.to_numpy().sum()
+        cond_prob = joint_freq.div(joint_freq.sum(axis=1), axis=0)
+        print('-------------------------------')
+        print(f'    P({X}|{Y}):   ')
+        print(cond_prob)
+            
 #@title Modelo
 class Modelo:
     '''
@@ -833,6 +907,7 @@ class Modelo:
         self.funcion = None # la función de predicción
         self.__parametros = {}  # {'param':{'VAL','DIST','MEAN','SE'}}
         self.longitud = self.__df.shape[0]
+        self.codigos = None
     #============================================#
     #     Métodos de alteración                  #
     #============================================#
@@ -851,23 +926,23 @@ class Modelo:
     #============================================#
     #     Métodos de usuario                     #
     #============================================#
-    def predict(self,dato):
+    def predict(self,dato,multiple=False):
         '''
         ##########################################
         Predice un valor de respuesta en base al
         dato proveído
         ##########################################
         '''
-        return self.funcion(dato) # se especifica en el modelo específico
+        return self.funcion(dato,multiple) # se especifica en el modelo específico
 
     def param(self,param,charact):
         output = self.__parametros[param][charact]
         return output
-    
+
     def param_list(self):
         output = self.__parametros.keys()
         return output
-    
+
     def resumen(self):
         print(self.resultado.summary())
         return self.resultado.summary()
@@ -899,11 +974,18 @@ class Modelo:
         Devuelve matriz binaria de categorias de las predictoras
         '''
         return self.predictores_df.biny(**codigos)
+    
+    def biny_res(self,**codigos):
+        '''
+        Devuelve matriz binaria de categorias de las respuestas
+        '''
+
+        return self.respuestas_df.biny(**codigos)
 
     def df(self):
         output = self.__df
         return output
-    
+
     #====================================================#
     #       Métodos gráficos                             #
     #====================================================#
@@ -912,13 +994,18 @@ class Modelo:
         #print(f'{X=}')
         #print(f'{Y=}')
         self.__df.grafico2D(X=X,Y=Y,kind=kind,show=show,add=add)
-    
+
     def grafico_modelo(self,show=False,add=False,**codigos):
         '''
-        codigos: códigos de la matriz binaria de predictores 
+        codigos: códigos de la matriz binaria de predictores
         '''
-        pred = self.biny_pred(**codigos)    # va a ser un pandas.DataFrame/Series
-        #print(f'pred:\n {pred}')    ###
+        import numpy as np
+
+        if self.codigos != None:
+            codigos = self.codigos
+        print(codigos)
+
+        pred = self.biny_pred(**codigos)
         assert len(pred.columns) <= 2, f'Demasiadas variables predictoras: {len(pred.columns)}'
         resp = self.respuestas_df
         # Caso 2D:
@@ -927,14 +1014,18 @@ class Modelo:
             if not add:
                 plt.ioff()
             scatter = self.grafico2D(X=pred.columns[0],Y=resp.columns[0],show=False,add=True)
-            a = min(pred.values)
-            b = max(pred.values)
-            #print(f'min(pred):\n {a}')  ####
-            #print(f'max(pred):\n {b}')  ####
-            line, = plt.plot([a,b],[self.predict(a),self.predict(b)],'-',color='orange')
+            a = min(pred.iloc[:,0])
+            b = max(pred.iloc[:,0])
+            x = np.linspace(a,b,1000)
+            #print(x)  ###
+            #print(self.predict(x,True))  ###
+            line, = plt.plot(x,self.predict(x,True),'-',color='orange')
             if show:
                 plt.show()
             return scatter,line
+        
+        if len(pred.columns) == 2:
+            pass
 
 #@title subclases de Modelos según Quant o Cual
 
@@ -950,13 +1041,47 @@ class RQmodel(Modelo):
         super().__init__(*args,**kwargs)
         pass
 
+    def __calc_residuos(self,**codigos): ### test vector de predictores y de respuestas
+        '''
+        ###############################
+        Calcula los residuos del modelo
+        ###############################
+        Por ahora, sólo acepta respuestas unidimensionales
+        '''
+        import numpy as np
+        residuos = []
+        predictores = self.biny_pred(**codigos) #  matriz de predictores binarizada
+        respuestas = self.respuestas_df # matriz de respuestas
+        for i in range(len(predictores)):
+            X = predictores.iloc[i]
+            Y = respuestas.iloc[i]
+            prediccion = self.predict(X)
+            residuo = Y - prediccion
+            residuos.append(residuo)
+        self.__residuos = residuos
+
+    def __calc_SE_residuos(self,**codigos):
+        residuos = self.residuos(**codigos)
+        n = self.longitud
+        s = 0
+        for valor in residuos:
+            s += valor**2
+        s *= 1/(n-2)
+        s **= 1/2
+        self.__SE_residuos = s
+
     def residuos(self):
         return self.resultado.resid
 
     def SE_residuos(self):
         return self.resultado.mse_resid**0.5
-    
+
     def shapiro_residuos(self):
+        '''
+        Testea para
+        H0: residuos normales
+        H1: residuos no normales
+        '''
         from scipy.stats import shapiro
         stat,p_valor1 = shapiro(self.residuos())
         return p_valor1
@@ -969,7 +1094,7 @@ class RQmodel(Modelo):
         '''
         residuos = self.residuos()
         X = sm.add_constant(self.biny_pred(**self.codigos),has_constant='add')
-        from statsmodels.stats.diagnostic import het_breuschpagan
+        from statsmodels.stats.diagnostic import het_breuschpagan, het_white
         bp_test = het_breuschpagan(residuos, X)
         bp_value = bp_test[1]
         return bp_value
@@ -1020,17 +1145,24 @@ class RCmodel(Modelo):
     ################################################
     '''
 
+    # Agregar binarización de las respuestas acá
+
 class PCmodel(Modelo):
     '''
     ################################################
     predictor: cualitativo
     ################################################
     '''
+    def __init__(self,*args,**kwargs):
+        # los predictores pueden ser vectores
+        super().__init__(*args,**kwargs)
+        pass
+
+    # Agregar binarización de las predictoras acá
 
 #@title Modelos específicos
 
 class RL(RQmodel,PQmodel,PCmodel):
-
     def __init__(self,df,predictor,respuesta,**codigos):
         '''
         Códigos de las variables cualitativas
@@ -1056,6 +1188,7 @@ class RL(RQmodel,PQmodel,PCmodel):
         X = self.biny_pred(**codigos)
         self.pred_bin = X
 
+        # Generamos la fórmula de regresión, puesto que sino nos perdemos el atributo design_info
         formula = self.respuestas[0]+'~'
         columnas = X.columns
         formula += columnas[0]
@@ -1064,12 +1197,11 @@ class RL(RQmodel,PQmodel,PCmodel):
 
         y = self.respuestas_df
         DF = pd.concat([y, X],axis=1)
+        #print(DF)   ###
         modelo = smf.ols(formula,data=DF)
         resultado = modelo.fit()
-
         self.resultado = resultado
         self.modelo = modelo
-
         parametros = resultado.params
         param_names = parametros.index.tolist()
         param_values = parametros.values
@@ -1077,95 +1209,104 @@ class RL(RQmodel,PQmodel,PCmodel):
         param_PVAL = resultado.pvalues
         R_squared = resultado.rsquared
         R_squared_adj = resultado.rsquared_adj
-
         self.set_param('rsquared','VAL',R_squared)  # no sirve para distinta cantidad de regresoras
         self.set_param('rsquared_adj','VAL',R_squared_adj)  # sirve para distinta cantidad de regresoras
-
         # Guardamos los datos de los parámetros
         for i in range(len(param_names)):
             self.set_param(param_names[i],'VAL',param_values[i])
             self.set_param(param_names[i],'SE',param_SE[i])
             self.set_param(param_names[i],'PVAL',param_PVAL[i])
 
-        def f(value):
+        def f(value,multiple=False):
             import numpy as np
             import pandas as pd
+            if multiple:
+                output = []
+                for valor in value:
+                    if np.isscalar(valor):
+                        valor = [valor]
+                    valor = pd.DataFrame([[x] for x in valor],columns=self.pred_bin.columns)
+                    pred = self.resultado.get_prediction(valor)
+                    summary = pred.summary_frame()
+                    #print(summary)
+                    output.append(summary['mean'].iloc[0])
+                return output
+
             if np.isscalar(value):
                 value = [value]
-            value = pd.DataFrame([value],columns=self.pred_bin.columns)
-
-            #print(f'value:\n {value}')      ###
-            #rint(f'type(value):\n {type(value)}')  ###
-
+            value = pd.DataFrame([[x] for x in value],columns=self.pred_bin.columns)
             pred = self.resultado.get_prediction(value)
             summary = pred.summary_frame()
             return summary['mean'].iloc[0]
 
         self.funcion = f
-        #self.funcion = lambda vect : float(param_values[0] + np.dot(vect,param_values[1:]))
+
+    #=============================================#
+    #     Métodos de usuario                      #
+    #=============================================#
 
     def ttest(self,param,value,conf,condition='equal'):
-            '''
-            =======================================
-            Realiza el test de hipótesis:
-                - H0: param >=< value
-                - H1: param <!=> value
-            al conf*100% de confianza
+        '''
+        =======================================
+        Realiza el test de hipótesis:
+            - H0: param >=< value
+            - H1: param <!=> value
+        al conf*100% de confianza
 
-            Utiliza el estadístico
+        Utiliza el estadístico
 
-            T = (valor - param)/SE(param)
+        T = (valor - param)/SE(param)
 
-            que tiene distribución t-student
-            con n-p grados de libertad
-                - n:  cantidad de observaciones
-                - p:  cantidad de parámetros
-            =======================================
-            Recibe:
-            - param:  el nombre del parámetro a testear
-            - value:  el valor que queremos testear
-            - conf:  con cuánta confianza lo vamos a testear
-            - condition:
-                - greater
-                - less
-                - equal
-            '''
-            import scipy.stats as sp
-            import numpy as np
-            SE = self.param(param,'SE')
-            B = self.param(param,'VAL')
-            T = (B-value)/SE
-            p = len(self.param_list())
-            n = self.longitud
-            p_val = 0
-            signif = 1-conf
+        que tiene distribución t-student
+        con n-p grados de libertad
+            - n:  cantidad de observaciones
+            - p:  cantidad de parámetros
+        =======================================
+        Recibe:
+          - param:  el nombre del parámetro a testear
+          - value:  el valor que queremos testear
+          - conf:  con cuánta confianza lo vamos a testear
+          - condition:
+              - greater
+              - less
+              - equal
+        '''
+        import scipy.stats as sp
+        import numpy as np
+        SE = self.param(param,'SE')
+        B = self.param(param,'VAL')
+        T = (B-value)/SE
+        p = len(self.param_list())
+        n = self.longitud
+        p_val = 0
+        signif = 1-conf
 
-            if condition == 'greater':
-                p_val = sp.t.sf(T,n-p)
-            elif condition == 'less':
-                p_val = sp.t.cdf(T,n-p)
-            else:
-                p_val = 2 * sp.t.sf(np.abs(T),n-p)
+        if condition == 'greater':
+            p_val = sp.t.sf(T,n-p)
+        elif condition == 'less':
+            p_val = sp.t.cdf(T,n-p)
+        else:
+            p_val = 2 * sp.t.sf(np.abs(T),n-p)
 
-            if p_val <= signif:
-                print('==============================')
-                print(f'Se rechaza la hipótesis nula')
-                print(f'Para el parámetro {param}')
-                print(f'Para la condición {condition}')
-                print(f'Para el valor {value}')
-                print(f'Con {signif} de significancia')
-                print(f'Con un p-valor de {p_val}')
-                print('===============================')
+        if p_val <= signif:
+            print('==============================')
+            print(f'Se rechaza la hipótesis nula')
+            print(f'Para el parámetro {param}')
+            print(f'Para la condición {condition}')
+            print(f'Para el valor {value}')
+            print(f'Con {signif} de significancia')
+            print(f'Con un p-valor de {p_val}')
+            print('===============================')
 
-            if p_val > signif:
-                print('==========================================')
-                print(f'No es posible rechazar la hipótesis nula')
-                print(f'Para el parámetro {param}')
-                print(f'Para la condición {condition}')
-                print(f'Para el valor {value}')
-                print(f'Con {signif} de significancia')
-                print(f'Con un p-valor de {p_val}')
-                print('===========================================')
+        if p_val > signif:
+            print('==========================================')
+            print(f'No es posible rechazar la hipótesis nula')
+            print(f'Para el parámetro {param}')
+            print(f'Para la condición {condition}')
+            print(f'Para el valor {value}')
+            print(f'Con {signif} de significancia')
+            print(f'Con un p-valor de {p_val}')
+            print('===========================================')
 
     def conf_int(self,param,conf):
         alfa = 1-conf
@@ -1175,15 +1316,21 @@ class RL(RQmodel,PQmodel,PCmodel):
     def conf_pred(self,value,conf):
         import statsmodels.api as sm
         alfa = 1-conf
+        #print(f'{value=}')  ###
+        #print('----')
         if np.isscalar(value):
             value = [value]
+        #print(f'{value=}')  ###
+        #print('----')
         value = pd.DataFrame([value],columns=self.pred_bin.columns)
+        #print(f'{value.shape=}')
+        #print(f'value:\n{value}')
         pred = self.resultado.get_prediction(value)
         summary = pred.summary_frame(alpha=alfa)
         low = summary['obs_ci_lower'].iloc[0]
         up = summary['obs_ci_upper'].iloc[0]
         return (low,up)
-    
+
     def SE_pred(self,value):
         import statsmodels.api as sm
         import numpy as np
@@ -1219,3 +1366,78 @@ class RL(RQmodel,PQmodel,PCmodel):
         summary = pred.summary_frame()
         SE = summary['mean_se'].iloc[0]
         return SE
+
+    #def anova(self,categoria):
+        #'''
+        #===============================================
+        #Realiza ANOVA sobre las clases de una categoría
+        #predictora especificada
+        #===============================================
+        #'''
+        #import statsmodels.stats.anova as sma
+        #null_clases = {}
+
+        #modeloH0 = RL(df=self.df,predictor=self.predictores,respuesta=self.respuesta,categoria={})
+
+
+class Log(RCmodel,PQmodel,PCmodel):
+    def __init__(self,df,predictor,respuesta,**codigos):
+        super().__init__(df=df,predictor=predictor,respuesta=respuesta)
+        self.codigos = codigos
+        self.__model(**codigos)
+        pass
+    def __model(self,**codigos):
+        import statsmodels.api as sm
+        import statsmodels.formula.api as smf
+        import pandas as pd
+        X = self.biny_pred(**codigos)
+        self.pred_bin = X
+
+        # Generamos la fórmula de regresión, puesto que sino nos perdemos el atributo design_info
+        formula = self.respuestas[0]+'~'
+        columnas = X.columns
+        formula += columnas[0]
+        for columna in columnas[1:]:
+            formula += '+'+columna
+
+        y = self.biny_res(**codigos)
+        DF = pd.concat([y, X],axis=1)
+
+        modelo = smf.logit(formula,data=DF) # ajuste Log
+        resultado = modelo.fit()
+        self.resultado = resultado
+        self.modelo = modelo
+        parametros = resultado.params
+        param_names = parametros.index.tolist()
+        param_values = parametros.values
+        param_SE = resultado.bse
+        param_PVAL = resultado.pvalues
+
+        for i in range(len(param_names)):
+            self.set_param(param_names[i],'VAL',param_values[i])
+            self.set_param(param_names[i],'SE',param_SE[i])
+            self.set_param(param_names[i],'PVAL',param_PVAL[i])
+
+        def f(value,multiple=False):
+            import numpy as np
+            import pandas as pd
+            if multiple:
+                output = []
+                for valor in value:
+                    if np.isscalar(valor):
+                        valor = [valor]
+                    valor = pd.DataFrame([[x] for x in valor],columns=self.pred_bin.columns)
+                    pred = self.resultado.get_prediction(valor)
+                    summary = pred.summary_frame()
+                    #print(summary)  ###
+                    output.append(summary['predicted'].iloc[0])
+                return output
+
+            if np.isscalar(value):
+                value = [value]
+            value = pd.DataFrame([[x] for x in value],columns=self.pred_bin.columns)
+            pred = self.resultado.get_prediction(value)
+            summary = pred.summary_frame()
+            return summary['predicted'].iloc[0]
+
+        self.funcion = f
