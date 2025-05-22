@@ -985,8 +985,8 @@ class Modelo:
         '''
         '''
         import numpy as np
-        codigos_pred = None
-        codigos_res = None  # (?)
+        codigos_pred = {}
+        codigos_res = {}  # (?)
 
         #######################################
         # excepciones
@@ -1006,6 +1006,9 @@ class Modelo:
         ########################################
   
         pred = self.biny_pred(**codigos_pred)
+        #print(pred) ###
+        #print(pred.iloc[0,0]) ###
+        #print(type(pred.iloc[0,0])) ###
         assert len(pred.columns) <= 2, f'Demasiadas variables predictoras: {len(pred.columns)}'
         resp = self.respuestas_df
     
@@ -1015,11 +1018,17 @@ class Modelo:
             if not add:
                 plt.ioff()
             scatter = self.grafico2D(X=pred.columns[0],Y=resp.columns[0],show=False,add=True)
-            a = min(pred.iloc[:,0])
-            b = max(pred.iloc[:,0])
-            x = np.linspace(a,b,1000)
-            #print(x)  ###
-            #print(self.predict(x,True))  ###
+            if type(pred.iloc[0,0]) != str and type(pred.iloc[0,0]) != np.str_:
+                a = min(pred.iloc[:,0])
+                b = max(pred.iloc[:,0])
+                #print(a)  ###
+                #print(b)  ###
+                x = np.linspace(a,b,1000)
+                #print(x)  ###
+                #print(self.predict(x,True))  ###
+            else:
+                x = list(set(self.predictores_df.iloc[:,0]))
+                #print(x)  ###
             line, = plt.plot(x,self.predict(x,True),'-',color='orange')
             if show:
                 plt.show()
