@@ -1249,7 +1249,7 @@ class RL(RQmodel,PQmodel,PCmodel):
                 for valor in value:
                     if np.isscalar(valor):
                         valor = [valor]
-                    valor = pd.DataFrame([[x] for x in valor],columns=self.pred_bin.columns)
+                    valor = pd.DataFrame([x for x in valor],columns=self.pred_bin.columns)
                     pred = self.resultado.get_prediction(valor)
                     summary = pred.summary_frame()
                     #print(summary)
@@ -1258,7 +1258,7 @@ class RL(RQmodel,PQmodel,PCmodel):
 
             if np.isscalar(value):
                 value = [value]
-            value = pd.DataFrame([[x] for x in value],columns=self.pred_bin.columns)
+            value = pd.DataFrame([x for x in value],columns=self.pred_bin.columns)
             pred = self.resultado.get_prediction(value)
             summary = pred.summary_frame()
             return summary['mean'].iloc[0]
@@ -1455,7 +1455,7 @@ class Log(RCmodel,PQmodel,PCmodel):
                 for valor in value:
                     if np.isscalar(valor):
                         valor = [valor]
-                    valor = pd.DataFrame([[x] for x in valor],columns=self.pred_bin.columns)
+                    valor = pd.DataFrame([x for x in valor],columns=self.pred_bin.columns)
                     pred = self.resultado.get_prediction(valor)
                     summary = pred.summary_frame()
                     #print(summary)  ###
@@ -1464,7 +1464,7 @@ class Log(RCmodel,PQmodel,PCmodel):
 
             if np.isscalar(value):
                 value = [value]
-            value = pd.DataFrame([[x] for x in value],columns=self.pred_bin.columns)
+            value = pd.DataFrame([x for x in value],columns=self.pred_bin.columns)
             pred = self.resultado.get_prediction(value)
             summary = pred.summary_frame()
             return summary['predicted'].iloc[0]
