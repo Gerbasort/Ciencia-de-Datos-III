@@ -782,37 +782,18 @@ class Dataframe(pd.DataFrame):
                 output.insert(loc=col_index + i,column=col_name,value=cual_biny_df[col_name])
         return output
 
-    def grafico2D(self,X,Y,kind='scatter',show=False,add=False):
+    #####################################################
+    #               Métodos de usuario                  #
+    #####################################################
+    def sample(self,size,axis=0,replace=False):
         '''
-        Recibe:
-            - X: columna del eje X
-            - Y: columna del eje Y
-            - col: columna de coloreo
-            - kind: tipo de ploteo
+        Devuelve un objeto Dataframe sampleado 
+        en el eje axis
         '''
-        import matplotlib.pyplot as plt
-        if not add:
-            plt.ioff()
-        # Scatter:
-        if kind == 'scatter':
-            scatter = self.plot(kind=kind,x=X,y=Y)
-            if show:
-                plt.show()
-            return scatter
-        elif kind == 'line':
-            line, = self.plot(kind=kind,x=X,y=Y)
-            if show:
-                plt.show()
-            return line
-        elif kind == 'boxplot':
-            self.boxplot(by=X,column=Y)
-            if show:
-              plt.show()
-        else:
-            self.plot(kind=kind,x=X,y=Y)
-            if show:
-              plt.show()
-    
+        sampled = self.sample(n=size,axis=axis,replace=replace)
+        output = Dataframe(sampled,columns=sampled.columns)
+        return output
+
     def prob_joint(self,X,Y):
         '''
         ================================================
@@ -876,6 +857,38 @@ class Dataframe(pd.DataFrame):
         print(f'    P({X}|{Y}):   ')
         print(cond_prob)
             
+
+    def grafico2D(self,X,Y,kind='scatter',show=False,add=False):
+        '''
+        Recibe:
+            - X: columna del eje X
+            - Y: columna del eje Y
+            - col: columna de coloreo
+            - kind: tipo de ploteo
+        '''
+        import matplotlib.pyplot as plt
+        if not add:
+            plt.ioff()
+        # Scatter:
+        if kind == 'scatter':
+            scatter = self.plot(kind=kind,x=X,y=Y)
+            if show:
+                plt.show()
+            return scatter
+        elif kind == 'line':
+            line, = self.plot(kind=kind,x=X,y=Y)
+            if show:
+                plt.show()
+            return line
+        elif kind == 'boxplot':
+            self.boxplot(by=X,column=Y)
+            if show:
+              plt.show()
+        else:
+            self.plot(kind=kind,x=X,y=Y)
+            if show:
+              plt.show()
+
 #@title Modelo
 class Modelo:
     '''
@@ -1028,7 +1041,7 @@ class Modelo:
                 #print(self.predict(x,True))  ###
             else:
                 x = list(set(self.predictores_df.iloc[:,0]))
-                #print(x)  ###
+            #print(f'x: {x}')  ###
             line, = plt.plot(x,self.predict(x,True),'-',color='orange')
             if show:
                 plt.show()
@@ -1195,7 +1208,7 @@ class RL(RQmodel,PQmodel,PCmodel):
         self.codigos = codigos
         self.__model(**codigos)
 
-    def __model(self,**codigos):
+    def __model(self):
         '''
         codigos:  escribe todas las columnas cualitativas, aunque no se
                   quiera ingresar un código específico.
@@ -1209,7 +1222,7 @@ class RL(RQmodel,PQmodel,PCmodel):
         import statsmodels.api as sm
         import statsmodels.formula.api as smf
         import pandas as pd
-        X = self.biny_pred(**codigos)
+        X = self.biny_pred(**self.codigos)
         self.pred_bin = X
 
         # Generamos la fórmula de regresión, puesto que sino nos perdemos el atributo design_info
@@ -1247,18 +1260,15 @@ class RL(RQmodel,PQmodel,PCmodel):
             if multiple:
                 output = []
                 for valor in value:
-                    if np.isscalar(valor):
-                        valor = [valor]
-                    valor = pd.DataFrame([x for x in valor],columns=self.pred_bin.columns)
+                    valor = [valor]
+                    valor = pd.DataFrame(valor,columns=self.pred_bin.columns)
                     pred = self.resultado.get_prediction(valor)
                     summary = pred.summary_frame()
-                    #print(summary)
                     output.append(summary['mean'].iloc[0])
                 return output
 
-            if np.isscalar(value):
-                value = [value]
-            value = pd.DataFrame([x for x in value],columns=self.pred_bin.columns)
+            value = [value]
+            value = pd.DataFrame(value,columns=self.pred_bin.columns)
             pred = self.resultado.get_prediction(value)
             summary = pred.summary_frame()
             return summary['mean'].iloc[0]
@@ -1453,20 +1463,18 @@ class Log(RCmodel,PQmodel,PCmodel):
             if multiple:
                 output = []
                 for valor in value:
-                    if np.isscalar(valor):
-                        valor = [valor]
-                    valor = pd.DataFrame([x for x in valor],columns=self.pred_bin.columns)
+                    valor = [valor]
+                    valor = pd.DataFrame(valor,columns=self.pred_bin.columns)
                     pred = self.resultado.get_prediction(valor)
                     summary = pred.summary_frame()
-                    #print(summary)  ###
                     output.append(summary['predicted'].iloc[0])
                 return output
 
-            if np.isscalar(value):
-                value = [value]
-            value = pd.DataFrame([x for x in value],columns=self.pred_bin.columns)
+            value = [value]
+            value = pd.DataFrame(value,columns=self.pred_bin.columns)
             pred = self.resultado.get_prediction(value)
             summary = pred.summary_frame()
             return summary['predicted'].iloc[0]
 
         self.funcion = f
+
