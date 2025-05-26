@@ -790,7 +790,10 @@ class Dataframe(pd.DataFrame):
         Devuelve un objeto Dataframe sampleado 
         en el eje axis
         '''
-        sampled = self.sample(n=size,axis=axis,replace=replace)
+        if size<=1 and size>= 0:
+            sampled = self.sample(frec=size,axis=axis,replace=replace)
+        else:
+            sampled = self.sample(n=size,axis=axis,replace=replace)
         output = Dataframe(sampled,columns=sampled.columns)
         return output
 
