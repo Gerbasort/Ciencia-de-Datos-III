@@ -782,12 +782,13 @@ class Dataframe(pd.DataFrame):
                 output.insert(loc=col_index + i,column=col_name,value=cual_biny_df[col_name])
         return output
 
-    #####################################################
-    #               Métodos de usuario                  #
-    #####################################################
+    #################################################
+    #             Métodos de usuario                #
+    #################################################
+
     def sample(self,size,axis=0,replace=False):
         '''
-        Devuelve un objeto Dataframe sampleado 
+        Devuelve un objeto Dataframe sampleado
         en el eje axis
         '''
         if size<=1 and size>= 0:
@@ -796,70 +797,6 @@ class Dataframe(pd.DataFrame):
             sampled = self.sample(n=size,axis=axis,replace=replace)
         output = Dataframe(sampled,columns=sampled.columns)
         return output
-
-    def prob_joint(self,X,Y):
-        '''
-        ================================================
-        Muestra las probabilidades conjuntas de cada una 
-        de las clases de las categorías X e Y.
-        ================================================
-        Ej:   X:  {male, female}
-              Y:  {smoker,nonsmoker}
-        P(male y smoker), P(female y nonsmoker), etc.
-                  male  | female
-        smoker    0.25  | 0.10  
-        nonsmoker 0.60  | 0.05
-        ------------------------------------------------
-        Asume:
-            - X e Y son categóricas
-        '''
-        import pandas as pd
-        joint_freq = pd.crosstab(self[X], self[Y])
-        joint_prob = joint_freq / joint_freq.to_numpy().sum()
-        print('----------------------------------')
-        print(f'    P({X} and {Y})    ')
-        print(joint_prob)
-    
-    def prob(self,category):
-        '''
-        ===============================================
-        Muestra las probabilidades marginales de una
-        categoría
-        ===============================================
-        Ej: category:  {male, female}
-        -----------------------------------------------
-        Asume:
-            - X e Y son categóricas
-        '''
-        import pandas as pd
-        joint_freq = pd.crosstab(self[category],columns='count')
-
-        total = joint_freq.to_numpy().sum()
-
-        joint_prob = joint_freq / total
-
-        print('--------------------------------')
-        print(f'    P({category})   ')
-        print(joint_prob)
-    
-    def prob_cond(self,X,Y):
-        '''
-        =============================================
-        Realiza la probabilidad condicional de X
-        dado Y
-        =============================================
-        Ej: X:  {smoker, nonsmoker}
-            Y:  {male, female}
-        P(smoker|male), P(smoker|female), etc.
-        '''
-        import pandas as pd
-        joint_freq = pd.crosstab(self[Y], self[X])
-        joint_prob = joint_freq / joint_freq.to_numpy().sum()
-        cond_prob = joint_freq.div(joint_freq.sum(axis=1), axis=0)
-        print('-------------------------------')
-        print(f'    P({X}|{Y}):   ')
-        print(cond_prob)
-            
 
     def grafico2D(self,X,Y,kind='scatter',show=False,add=False):
         '''
@@ -892,6 +829,81 @@ class Dataframe(pd.DataFrame):
             if show:
               plt.show()
 
+    def prob_joint(self,X,Y,freq=False):
+        '''
+        ================================================
+        Muestra las probabilidades conjuntas de cada una
+        de las clases de las categorías X e Y.
+        ================================================
+        Ej:   X:  {male, female}
+              Y:  {smoker,nonsmoker}
+        P(male y smoker), P(female y nonsmoker), etc.
+                  male  | female
+        smoker    0.25  | 0.10
+        nonsmoker 0.60  | 0.05
+        ------------------------------------------------
+        Asume:
+            - X e Y son categóricas
+        '''
+        import pandas as pd
+        joint_freq = pd.crosstab(self[X], self[Y])
+        if freq:
+            print('----------------------------------')
+            print(f'    {X} and {Y}    ')
+            print(joint_freq)
+            return joint_freq
+        joint_prob = joint_freq / joint_freq.to_numpy().sum()
+        print('----------------------------------')
+        print(f'    P({X} and {Y})    ')
+        print(joint_prob)
+        return joint_prob
+
+    def prob(self,category,freq=False):
+        '''
+        ===============================================
+        Muestra las probabilidades marginales de una
+        categoría
+        ===============================================
+        Ej: category:  {male, female}
+        -----------------------------------------------
+        Asume:
+            - X e Y son categóricas
+        '''
+        import pandas as pd
+        joint_freq = pd.crosstab(self[category],columns='count')
+        if freq:
+            print('--------------------------------')
+            print(f'    {category}   ')
+            print(joint_freq)
+            return joint_freq
+            
+        total = joint_freq.to_numpy().sum()
+        joint_prob = joint_freq / total
+
+        print('--------------------------------')
+        print(f'    P({category})   ')
+        print(joint_prob)
+        return joint_prob
+
+    def prob_cond(self,X,Y):
+        '''
+        =============================================
+        Realiza la probabilidad condicional de X
+        dado Y
+        =============================================
+        Ej: X:  {smoker, nonsmoker}
+            Y:  {male, female}
+        P(smoker|male), P(smoker|female), etc.
+        '''
+        import pandas as pd
+        joint_freq = pd.crosstab(self[Y], self[X])
+        joint_prob = joint_freq / joint_freq.to_numpy().sum()
+        cond_prob = joint_freq.div(joint_freq.sum(axis=1), axis=0)
+        print('-------------------------------')
+        print(f'    P({X}|{Y}):   ')
+        print(cond_prob)
+        return cond_prob
+
 #@title Modelo
 class Modelo:
     '''
@@ -913,6 +925,8 @@ class Modelo:
             - respuestas: etiquetas de los datos respuesta en df
         '''
         self.__df = df
+        #print(f'Model df: { type(df)}') ###
+        #print(f'Model self.__df: {type(self.__df)}')  ###
 
         self.predictores = predictor  # labels predictores
         self.respuestas = respuesta   # labels respuesta
@@ -1012,7 +1026,7 @@ class Modelo:
             pass
         else:
             codigos_pred = self.codigos_pred
-        
+
         try:
             self.codigos_res
         except:
@@ -1020,14 +1034,14 @@ class Modelo:
         else:
             codigos_res = self.codigos_res
         ########################################
-  
+
         pred = self.biny_pred(**codigos_pred)
         #print(pred) ###
         #print(pred.iloc[0,0]) ###
         #print(type(pred.iloc[0,0])) ###
         assert len(pred.columns) <= 2, f'Demasiadas variables predictoras: {len(pred.columns)}'
         resp = self.respuestas_df
-    
+
         # Caso 2D:
         if len(pred.columns) == 1:
             import matplotlib.pyplot as plt
@@ -1044,7 +1058,7 @@ class Modelo:
                 #print(self.predict(x,True))  ###
             else:
                 x = list(set(self.predictores_df.iloc[:,0]))
-            #print(f'x: {x}')  ###
+            print(f'x: {x}')  ###
             line, = plt.plot(x,self.predict(x,True),'-',color='orange')
             if show:
                 plt.show()
@@ -1190,8 +1204,9 @@ class PCmodel(Modelo):
     def __init__(self,df,predictor,respuesta,**codigos):
         # los predictores pueden ser vectores
         self.Pcodigos = codigos
+        #print(f'PCmodel: {type(df)}') ###
         super().__init__(df=df,predictor=predictor,respuesta=respuesta)
-  
+
     def biny_pred(self,**codigos):
         '''
         Devuelve matriz binaria de categorias de las predictoras
@@ -1207,9 +1222,13 @@ class RL(RQmodel,PQmodel,PCmodel):
         '''
         Códigos de las variables cualitativas
         '''
-        super().__init__(df=df,predictor=predictor,respuesta=respuesta)
         self.codigos = codigos
-        self.__model(**codigos)
+        self.__df = df
+        self.codigos_pred = {codigo:codigos[codigo] for codigo in codigos if codigo in predictor}
+        PCmodel.__init__(self,df=df,predictor=predictor,respuesta=respuesta,**self.codigos_pred)
+        PQmodel.__init__(self,df=df,predictor=predictor,respuesta=respuesta)
+        self.codigos = codigos
+        self.__model()
 
     def __model(self):
         '''
@@ -1224,13 +1243,20 @@ class RL(RQmodel,PQmodel,PCmodel):
         '''
         import statsmodels.api as sm
         import statsmodels.formula.api as smf
+        import numpy as np
         import pandas as pd
-        X = self.biny_pred(**self.codigos)
-        self.pred_bin = X
-
+        if self.predictores != []:
+            X = self.biny_pred(**self.codigos_pred)
+            self.pred_bin = X
+        else:
+            n = len(self.respuestas_df.iloc[:,0])
+            X = pd.DataFrame(np.zeros((n,1)),columns=['empty'])
+        # si no metemos predictoras, queremos ser capaces de tener una Intercept
+        #print(X)  ###
         # Generamos la fórmula de regresión, puesto que sino nos perdemos el atributo design_info
         formula = self.respuestas[0]+'~'
         columnas = X.columns
+        #print(columnas) ###
         formula += columnas[0]
         for columna in columnas[1:]:
             formula += '+'+columna
@@ -1281,7 +1307,6 @@ class RL(RQmodel,PQmodel,PCmodel):
     #=============================================#
     #     Métodos de usuario                      #
     #=============================================#
-
     def ttest(self,param,value,conf,condition='equal'):
         '''
         =======================================
@@ -1404,22 +1429,27 @@ class RL(RQmodel,PQmodel,PCmodel):
         SE = summary['mean_se'].iloc[0]
         return SE
 
-    #def anova(self,categoria):
-        #'''
-        #===============================================
-        #Realiza ANOVA sobre las clases de una categoría
-        #predictora especificada
-        #===============================================
-        #'''
-        #import statsmodels.stats.anova as sma
-        #null_clases = {}
+    def anova(self,categoria):
+        '''
+        ===============================================
+        Realiza ANOVA sobre las clases de una categoría
+        predictora especificada
+        ===============================================
+        '''
+        import statsmodels.stats.anova as sma
+        resultadoH1 = self.resultado
+        predictores_new = self.predictores.copy()
+        predictores_new.pop(predictores_new.index(categoria))
+        print(predictores_new)
+        modeloH0 = RL(df=self.__df,predictor=predictores_new,respuesta=self.respuestas)
+        resultadoH0 = modeloH0.resultado
 
-        #modeloH0 = RL(df=self.df,predictor=self.predictores,respuesta=self.respuesta,categoria={})
-
+        return sma.anova_lm(resultadoH0,resultadoH1) # poner primero la H0 sino el p_val da mal  
 
 class Log(RCmodel,PQmodel,PCmodel):
     def __init__(self,df,predictor,respuesta,**codigos):
         self.codigos = codigos
+        self.__df = df
         self.codigos_res = {codigo:codigos[codigo] for codigo in codigos if codigo in respuesta}
         self.codigos_pred = {codigo:codigos[codigo] for codigo in codigos if codigo in predictor}
         RCmodel.__init__(self,df=df,predictor=predictor,respuesta=respuesta,**self.codigos_res)
@@ -1427,7 +1457,7 @@ class Log(RCmodel,PQmodel,PCmodel):
         PQmodel.__init__(self,df=df,predictor=predictor,respuesta=respuesta)
         self.codigos = codigos
         self.__model()
-        pass
+        
     def __model(self):
         import statsmodels.api as sm
         import statsmodels.formula.api as smf
@@ -1474,10 +1504,112 @@ class Log(RCmodel,PQmodel,PCmodel):
                 return output
 
             value = [value]
+            #print(value)    ###
             value = pd.DataFrame(value,columns=self.pred_bin.columns)
+            #print(value)    ###
             pred = self.resultado.get_prediction(value)
             summary = pred.summary_frame()
             return summary['predicted'].iloc[0]
 
         self.funcion = f
+    #########################################
+    #       Métodos de usuario              #
+    #########################################
+    def conf_int(self,param,conf):
+        alfa = 1-conf
+        conf_df = self.resultado.conf_int(alpha=alfa)
+        return conf_df.loc[param]
 
+    def conf_pred(self,value,conf):
+        import statsmodels.api as sm
+        alfa = 1-conf
+        #print(f'{value=}')  ###
+        #print('----')
+        if np.isscalar(value):
+            value = [value]
+        #print(f'{value=}')  ###
+        #print('----')
+        value = pd.DataFrame([value],columns=self.pred_bin.columns)
+        #print(f'{value.shape=}')
+        #print(f'value:\n{value}')
+        pred = self.resultado.get_prediction(value)
+        summary = pred.summary_frame(alpha=alfa)
+        low = summary['ci_lower'].iloc[0]
+        up = summary['ci_upper'].iloc[0]
+        return (low,up)
+
+    def SE_pred(self,value):
+        import statsmodels.api as sm
+        import numpy as np
+        if np.isscalar(value):
+            value = [value]
+        value = pd.DataFrame([value],columns=self.pred_bin.columns)
+        pred = self.resultado.get_prediction(value)
+        summary = pred.summary_frame()
+        SE = summary['se'].iloc[0]
+        return SE
+
+    def test_model(self,train=0.8): 
+        '''
+        ======================================
+        Realiza un testeo por cross validation
+        ======================================
+        Recibe:
+            - train:  porcentaje de datos de entrenamiento
+        ''' 
+        import random
+        n = len(self.__df.iloc[:,0])
+        #print(n)
+        n_train = int(n*train)
+        n_test = n-n_train
+        #print(n_train)
+        indices_train = random.sample(range(n),n_train)
+        indices_train.sort()
+        indices_test = [i for i in range(n) if i not in indices_train]
+
+        df_train = self.__df.iloc[indices_train,:].reset_index(drop=True)  ### MUY IMPORTANTE
+        DF_train = Dataframe(df_train,columns=df_train.columns)
+        #print(DF_train) ###
+        #print(self.predictores) ###
+        #print(self.respuestas)  ###
+        #print(self.codigos_res) ###
+        # 1)  modelo que queremos testear
+        modelo_train = Log(df=DF_train,predictor=self.predictores,respuesta=self.respuestas,**self.codigos_res) 
+
+        # 2)  tomamos los datos de testeo
+        
+        datos_test = self.predictores_df
+        datos_test = datos_test.iloc[indices_test]
+        datos_test = np.array(datos_test,dtype=object)
+        
+        # 3)  Generamos los conjuntos a comparar
+        prob_pred = modelo_train.predict(datos_test,multiple=True)
+        y_pred = [1 if x>=0.5 else 0 for x in prob_pred]
+        prob_test = [1 if x=='Yes' else 0 for x in self.respuestas_df.iloc[indices_test,0]]
+
+        print(y_pred)     ###
+        print(prob_test)  ###
+        print(len(y_pred))  ###
+        print(len(prob_test)) ###
+        # 4) Tabla de comparaciones
+        DF_table = Dataframe()
+        DF_table['test'] = prob_test
+        DF_table['pred'] = y_pred
+        print('-----------------------------------------')
+        print('     Predicciones vs Realidad (freq)    ')
+        table = DF_table.prob_joint('test','pred',freq=True)
+        print('---------------------------------')
+        print('     Predicciones vs Realidad    ')
+        print(DF_table.prob_joint('test','pred'))
+        print('---------------------------------')
+        print('     Ratio de error:    ')
+        print('---------------------------------')
+        output = (table.iloc[0,1] + table.iloc[1,0])/n_test
+        print(f'Falsos positivos:\n')
+        print(f'marginal: {table.iloc[0,1]/n_test}')
+        print(f'condicional (entre positivos):{table.iloc[0,1]/(table.iloc[0,1]+table.iloc[1,1])}')
+        print(f'--------------------------')
+        print(f'Falsos negativos:\n')
+        print(f'marginal: {table.iloc[1,0]/n_test}')
+        print(f'condicional (entre negativos): {table.iloc[1,0]/(table.iloc[1,0]+table.iloc[0,0])}')
+        return output
