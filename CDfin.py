@@ -379,6 +379,9 @@ class Datos(np.ndarray):
 #@title Cualitative and Quantitative
 #@title Cualitative and Quantitative
 class CualDatos(Datos):
+    '''
+    Datos cualitativos
+    '''
     def __init__(self,shape,dtype=object,buffer=None,offset=0,strides=None,order=None):
         super().__init__(shape=shape,dtype=dtype,buffer=buffer,offset=offset,strides=strides,order=order)
         #=================#
@@ -541,6 +544,9 @@ class CualDatos(Datos):
         return list(clases)
 
 class QuantDatos(Datos):
+    '''
+    Datos cuantitativos
+    '''
     def __init__(self,shape,dtype=object,buffer=None,offset=0,strides=None,order=None):
         super().__init__(shape=shape,dtype=dtype,buffer=buffer,offset=offset,strides=strides,order=order)
 
@@ -847,6 +853,8 @@ class Dataframe(pd.DataFrame):
         '''
         import pandas as pd
         joint_freq = pd.crosstab(self[X], self[Y])
+        clases_X = list(set(self[X]))
+        joint_freq = joint_freq.reindex([0,1],fill_value=0)
         if freq:
             print('----------------------------------')
             print(f'    {X} and {Y}    ')
@@ -871,12 +879,14 @@ class Dataframe(pd.DataFrame):
         '''
         import pandas as pd
         joint_freq = pd.crosstab(self[category],columns='count')
+        clases = list(set(self[category]))
+        joint_freq = joint_freq.reindex([0,1],fill_value=0)
         if freq:
             print('--------------------------------')
             print(f'    {category}   ')
             print(joint_freq)
             return joint_freq
-            
+
         total = joint_freq.to_numpy().sum()
         joint_prob = joint_freq / total
 
@@ -897,6 +907,8 @@ class Dataframe(pd.DataFrame):
         '''
         import pandas as pd
         joint_freq = pd.crosstab(self[Y], self[X])
+        clases_Y = list(set(self[Y]))
+        joint_freq = joint_freq.reindex([0,1],fill_value=0)
         joint_prob = joint_freq / joint_freq.to_numpy().sum()
         cond_prob = joint_freq.div(joint_freq.sum(axis=1), axis=0)
         print('-------------------------------')
@@ -1444,7 +1456,7 @@ class RL(RQmodel,PQmodel,PCmodel):
         modeloH0 = RL(df=self.__df,predictor=predictores_new,respuesta=self.respuestas)
         resultadoH0 = modeloH0.resultado
 
-        return sma.anova_lm(resultadoH0,resultadoH1) # poner primero la H0 sino el p_val da mal  
+        return sma.anova_lm(resultadoH0,resultadoH1) # poner primero la H0 sino el p_val da mal
 
 class Log(RCmodel,PQmodel,PCmodel):
     def __init__(self,df,predictor,respuesta,**codigos):
@@ -1457,7 +1469,7 @@ class Log(RCmodel,PQmodel,PCmodel):
         PQmodel.__init__(self,df=df,predictor=predictor,respuesta=respuesta)
         self.codigos = codigos
         self.__model()
-        
+
     def __model(self):
         import statsmodels.api as sm
         import statsmodels.formula.api as smf
@@ -1549,67 +1561,98 @@ class Log(RCmodel,PQmodel,PCmodel):
         SE = summary['se'].iloc[0]
         return SE
 
-    def test_model(self,train=0.8): 
+
+    def test_model(self,train=0.8,cut=0.5):
         '''
         ======================================
         Realiza un testeo por cross validation
         ======================================
         Recibe:
             - train:  porcentaje de datos de entrenamiento
-        ''' 
+            - cut:  a partir de qué porcentaje son considerados
+                    positivos
+        '''
         import random
-        n = len(self.__df.iloc[:,0])
-        #print(n)
-        n_train = int(n*train)
-        n_test = n-n_train
-        #print(n_train)
-        indices_train = random.sample(range(n),n_train)
-        indices_train.sort()
-        indices_test = [i for i in range(n) if i not in indices_train]
+        cache = True    #   guardamos un cache por si queremos iterar sobre un mismo set de entrenamiento
+        try:
+            self.cache
+        except:
+            cache = False
 
-        df_train = self.__df.iloc[indices_train,:].reset_index(drop=True)  ### MUY IMPORTANTE
-        DF_train = Dataframe(df_train,columns=df_train.columns)
-        #print(DF_train) ###
-        #print(self.predictores) ###
-        #print(self.respuestas)  ###
-        #print(self.codigos_res) ###
-        # 1)  modelo que queremos testear
-        modelo_train = Log(df=DF_train,predictor=self.predictores,respuesta=self.respuestas,**self.codigos_res) 
+        if not cache or self.cache == {}:
+            n = len(self.__df.iloc[:,0])
+            #print(n)
+            n_train = int(n*train)
+            n_test = n-n_train
+            #print(n_train)
+            indices_train = random.sample(range(n),n_train)
+            indices_train.sort()
+            indices_test = [i for i in range(n) if i not in indices_train]
 
-        # 2)  tomamos los datos de testeo
+            df_train = self.__df.iloc[indices_train,:].reset_index(drop=True)  ### MUY IMPORTANTE
+            DF_train = Dataframe(df_train,columns=df_train.columns)
+            #print(DF_train) ###
+            #print(self.predictores) ###
+            #print(self.respuestas)  ###
+            #print(self.codigos_res) ###
+            # 1)  modelo que queremos testear
+            modelo_train = Log(df=DF_train,predictor=self.predictores,respuesta=self.respuestas,**self.codigos_res)
+
+            # 2)  tomamos los datos de testeo
+
+            datos_test = self.predictores_df
+            datos_test = datos_test.iloc[indices_test]
+            datos_test = np.array(datos_test,dtype=object)
+
+            # 3)  Generamos los conjuntos a comparar
+            prob_pred = modelo_train.predict(datos_test,multiple=True)
+            prob_test = [1 if x=='Yes' else 0 for x in self.respuestas_df.iloc[indices_test,0]]
+            DF_table = Dataframe()
+            DF_table['test'] = prob_test
+
+            # 4)  Guardamos en el cache:
+            self.cache = {}
+            self.cache.update({'n_test':n_test,'indices_test':indices_test,'prob_pred':prob_pred,'DF_table':DF_table})
+            
+        y_pred = [1 if x>=cut else 0 for x in self.cache['prob_pred']]
         
-        datos_test = self.predictores_df
-        datos_test = datos_test.iloc[indices_test]
-        datos_test = np.array(datos_test,dtype=object)
-        
-        # 3)  Generamos los conjuntos a comparar
-        prob_pred = modelo_train.predict(datos_test,multiple=True)
-        y_pred = [1 if x>=0.5 else 0 for x in prob_pred]
-        prob_test = [1 if x=='Yes' else 0 for x in self.respuestas_df.iloc[indices_test,0]]
-
-        print(y_pred)     ###
-        print(prob_test)  ###
-        print(len(y_pred))  ###
-        print(len(prob_test)) ###
+        #print(y_pred)     ###
+        #print(prob_test)  ###
+        #print(len(y_pred))  ###
+        #print(len(prob_test)) ###
         # 4) Tabla de comparaciones
-        DF_table = Dataframe()
-        DF_table['test'] = prob_test
+        n_test = self.cache['n_test']
+        DF_table = self.cache['DF_table']
         DF_table['pred'] = y_pred
         print('-----------------------------------------')
         print('     Predicciones vs Realidad (freq)    ')
-        table = DF_table.prob_joint('test','pred',freq=True)
+        table = DF_table.prob_joint('pred','test',freq=True)
         print('---------------------------------')
         print('     Predicciones vs Realidad    ')
-        print(DF_table.prob_joint('test','pred'))
+        DF_table.prob_joint('pred','test')
         print('---------------------------------')
-        print('     Ratio de error:    ')
+        marginal_error = (table.iloc[0,1] + table.iloc[1,0])/n_test
+        sens=table.iloc[1,1]/(table.iloc[1,1]+table.iloc[0,1])
+        spec=table.iloc[0,0]/(table.iloc[0,0]+table.iloc[1,0])
+        PYY =table.iloc[1,1]/(table.iloc[1,1]+table.iloc[1,0])  # P(real: si | ajuste: si)
+        PNN =table.iloc[0,0]/(table.iloc[0,0]+table.iloc[0,1])  # P(real: no | ajuste: no)
+        PYN = 1-PNN                                             # P(real: si | ajuste: no)
+        PNY = 1-PYY                                             # P(real: no | ajuste: si)
+        print(f'     Error marginal:  {marginal_error}  ')
         print('---------------------------------')
-        output = (table.iloc[0,1] + table.iloc[1,0])/n_test
         print(f'Falsos positivos:\n')
-        print(f'marginal: {table.iloc[0,1]/n_test}')
-        print(f'condicional (entre positivos):{table.iloc[0,1]/(table.iloc[0,1]+table.iloc[1,1])}')
+        print(f'marginal: {table.iloc[1,0]/n_test}')
+        print(f'P(ajuste: si | real: no):{1-spec}')
         print(f'--------------------------')
         print(f'Falsos negativos:\n')
-        print(f'marginal: {table.iloc[1,0]/n_test}')
-        print(f'condicional (entre negativos): {table.iloc[1,0]/(table.iloc[1,0]+table.iloc[0,0])}')
-        return output
+        print(f'marginal: {table.iloc[0,1]/n_test}')
+        print(f'P(ajuste: no | real: si): {1-sens}')
+        print(f'--------------------------')
+        print(f'Sensibilidad: {sens}')
+        print(f'Especificidad: {spec}')
+        print(f'--------------------------')
+        print(f'P(real: si | ajuste: si) {PYY}')
+        print(f'P(real: no | ajuste: no) {PNN}')
+        print(f'P(real: si | ajuste: no) {PYN}')
+        print(f'P(real: no | ajuste: si) {PNY}')
+        return {'err':marginal_error,'sens':sens,'spec':spec,'PYY':PYY,'PNN':PNN,'PYN':PYN,'PNY':PNY}
