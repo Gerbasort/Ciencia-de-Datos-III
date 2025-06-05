@@ -1659,3 +1659,5 @@ class Log(RCmodel,PQmodel,PCmodel):
         print(f'P(real: si | ajuste: no) {PYN}')
         print(f'P(real: no | ajuste: si) {PNY}')
         return {'err':marginal_error,'sens':sens,'spec':spec,'PYY':PYY,'PNN':PNN,'PYN':PYN,'PNY':PNY,'indices_train':indices_train,'indices_test':indices_test}
+    
+# esta branch es test
