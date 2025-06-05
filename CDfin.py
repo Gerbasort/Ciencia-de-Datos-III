@@ -854,8 +854,7 @@ class Dataframe(pd.DataFrame):
         import pandas as pd
         joint_freq = pd.crosstab(self[X], self[Y])
         clases_X = list(set(self[X]))
-        joint_freq = joint_freq.reindex([0,1],fill_value=0)
-        joint_freq = joint_freq.reindex(columns=[0,1],fill_value=0)
+        joint_freq = joint_freq.reindex(index=[0,1],columns=[0,1],fill_value=0)
         if freq:
             print('----------------------------------')
             print(f'    {X} and {Y}    ')
@@ -881,8 +880,7 @@ class Dataframe(pd.DataFrame):
         import pandas as pd
         joint_freq = pd.crosstab(self[category],columns='count')
         clases = list(set(self[category]))
-        joint_freq = joint_freq.reindex([0,1],fill_value=0)
-        joint_freq = joint_freq.reindex(columns=[0,1],fill_value=0)
+        joint_freq = joint_freq.reindex(index=[0,1],columns=[0,1],fill_value=0)
         if freq:
             print('--------------------------------')
             print(f'    {category}   ')
@@ -910,8 +908,7 @@ class Dataframe(pd.DataFrame):
         import pandas as pd
         joint_freq = pd.crosstab(self[Y], self[X])
         clases_Y = list(set(self[Y]))
-        joint_freq = joint_freq.reindex([0,1],fill_value=0)
-        joint_freq = joint_freq.reindex(columns=[0,1],fill_value=0)
+        joint_freq = joint_freq.reindex(index=[0,1],columns=[0,1],fill_value=0)
         joint_prob = joint_freq / joint_freq.to_numpy().sum()
         cond_prob = joint_freq.div(joint_freq.sum(axis=1), axis=0)
         print('-------------------------------')
