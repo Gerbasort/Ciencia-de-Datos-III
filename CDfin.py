@@ -1561,8 +1561,7 @@ class Log(RCmodel,PQmodel,PCmodel):
         SE = summary['se'].iloc[0]
         return SE
 
-
-    def test_model(self,train=0.8,cut=0.5):
+    def test_model(self,train=0.8,cut=0.5): # QUIZAS implementar selección arbitraria de filas
         '''
         ======================================
         Realiza un testeo por cross validation
@@ -1573,7 +1572,7 @@ class Log(RCmodel,PQmodel,PCmodel):
                     positivos
         '''
         import random
-        cache = True    #   guardamos un cache por si queremos iterar sobre un mismo set de entrenamiento
+        cache = True
         try:
             self.cache
         except:
@@ -1581,6 +1580,7 @@ class Log(RCmodel,PQmodel,PCmodel):
 
         if not cache or self.cache == {}:
             n = len(self.__df.iloc[:,0])
+
             #print(n)
             n_train = int(n*train)
             n_test = n-n_train
@@ -1613,15 +1613,15 @@ class Log(RCmodel,PQmodel,PCmodel):
             # 4)  Guardamos en el cache:
             self.cache = {}
             self.cache.update({'n_test':n_test,'indices_test':indices_test,'prob_pred':prob_pred,'DF_table':DF_table})
-            
+
         y_pred = [1 if x>=cut else 0 for x in self.cache['prob_pred']]
-        
+
         #print(y_pred)     ###
         #print(prob_test)  ###
         #print(len(y_pred))  ###
         #print(len(prob_test)) ###
         # 4) Tabla de comparaciones
-        n_test = self.cache['n_test']
+
         DF_table = self.cache['DF_table']
         DF_table['pred'] = y_pred
         print('-----------------------------------------')
@@ -1655,4 +1655,4 @@ class Log(RCmodel,PQmodel,PCmodel):
         print(f'P(real: no | ajuste: no) {PNN}')
         print(f'P(real: si | ajuste: no) {PYN}')
         print(f'P(real: no | ajuste: si) {PNY}')
-        return {'err':marginal_error,'sens':sens,'spec':spec,'PYY':PYY,'PNN':PNN,'PYN':PYN,'PNY':PNY}
+        return {'err':marginal_error,'sens':sens,'spec':spec,'PYY':PYY,'PNN':PNN,'PYN':PYN,'PNY':PNY,'indices_train':indices_train,'indices_test':indices_test}
