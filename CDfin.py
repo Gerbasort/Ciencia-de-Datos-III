@@ -1612,7 +1612,7 @@ class Log(RCmodel,PQmodel,PCmodel):
 
             # 4)  Guardamos en el cache:
             self.cache = {}
-            self.cache.update({'n_test':n_test,'indices_test':indices_test,'prob_pred':prob_pred,'DF_table':DF_table})
+            self.cache.update({'n_test':n_test,'indices_test':indices_test,'indices_train':indices_train,'prob_pred':prob_pred,'DF_table':DF_table})
 
         y_pred = [1 if x>=cut else 0 for x in self.cache['prob_pred']]
 
