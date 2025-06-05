@@ -17,10 +17,10 @@ Clases de bajo nivel:
     - PQmodel (predictor cuantitativo)
     - PCmodel (predictor cualitativo)
   -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  Workflow típico:
-    - Modelado:
-      - carga de datos en un objeto tipo Dataframe
-      - modelo basado en el Dataframe
-      - anova, validación, predicciones, parámetros, gráfico, análisis de residuos, etc.
-    - Estimación de densidades:
-      - (por ahora sólo en bajo nivel; se planea trasladar a Dataframe)
+Workflow típico:
+  - Modelado:
+    - carga de datos en un objeto tipo Dataframe
+    - modelo basado en el Dataframe
+    - anova, validación, predicciones, parámetros, gráfico, análisis de residuos, etc.
+  - Estimación de densidades:
+    - (por ahora sólo en bajo nivel; se planea trasladar a Dataframe)
