@@ -1,0 +1,1 @@
+Librería de python utilizada para análisis y ajuste de datos, basado en contenidos vistos en la materia Ciencia de Datos III de la Licenciatura en Ciencia de Datos de la Universidad Nacional del Litoral
