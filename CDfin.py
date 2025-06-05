@@ -1624,6 +1624,7 @@ class Log(RCmodel,PQmodel,PCmodel):
 
         DF_table = self.cache['DF_table']
         DF_table['pred'] = y_pred
+        n_test = self.cache['n_test']
         print('-----------------------------------------')
         print('     Predicciones vs Realidad (freq)    ')
         table = DF_table.prob_joint('pred','test',freq=True)
