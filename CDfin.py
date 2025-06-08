@@ -854,8 +854,7 @@ class Dataframe(pd.DataFrame):
         import pandas as pd
         joint_freq = pd.crosstab(self[X], self[Y])
         clases_X = list(set(self[X]))
-        joint_freq = joint_freq.reindex([0,1],fill_value=0)
-        joint_freq = joint_freq.reindex(columns=[0,1],fill_value=0)
+        joint_freq = joint_freq.reindex(index=[0,1],columns=[0,1],fill_value=0)
         if freq:
             print('----------------------------------')
             print(f'    {X} and {Y}    ')
@@ -881,8 +880,7 @@ class Dataframe(pd.DataFrame):
         import pandas as pd
         joint_freq = pd.crosstab(self[category],columns='count')
         clases = list(set(self[category]))
-        joint_freq = joint_freq.reindex([0,1],fill_value=0)
-        joint_freq = joint_freq.reindex(columns=[0,1],fill_value=0)
+        joint_freq = joint_freq.reindex(index=[0,1],columns=[0,1],fill_value=0)
         if freq:
             print('--------------------------------')
             print(f'    {category}   ')
@@ -910,8 +908,7 @@ class Dataframe(pd.DataFrame):
         import pandas as pd
         joint_freq = pd.crosstab(self[Y], self[X])
         clases_Y = list(set(self[Y]))
-        joint_freq = joint_freq.reindex([0,1],fill_value=0)
-        joint_freq = joint_freq.reindex(columns=[0,1],fill_value=0)
+        joint_freq = joint_freq.reindex(index=[0,1],columns=[0,1],fill_value=0)
         joint_prob = joint_freq / joint_freq.to_numpy().sum()
         cond_prob = joint_freq.div(joint_freq.sum(axis=1), axis=0)
         print('-------------------------------')
@@ -1615,7 +1612,7 @@ class Log(RCmodel,PQmodel,PCmodel):
 
             # 4)  Guardamos en el cache:
             self.cache = {}
-            self.cache.update({'n_test':n_test,'indices_test':indices_test,'prob_pred':prob_pred,'DF_table':DF_table})
+            self.cache.update({'n_test':n_test,'indices_test':indices_test,'indices_train':indices_train,'prob_pred':prob_pred,'DF_table':DF_table})
 
         y_pred = [1 if x>=cut else 0 for x in self.cache['prob_pred']]
 
@@ -1627,6 +1624,7 @@ class Log(RCmodel,PQmodel,PCmodel):
 
         DF_table = self.cache['DF_table']
         DF_table['pred'] = y_pred
+        n_test = self.cache['n_test']
         print('-----------------------------------------')
         print('     Predicciones vs Realidad (freq)    ')
         table = DF_table.prob_joint('pred','test',freq=True)
@@ -1659,3 +1657,5 @@ class Log(RCmodel,PQmodel,PCmodel):
         print(f'P(real: si | ajuste: no) {PYN}')
         print(f'P(real: no | ajuste: si) {PNY}')
         return {'err':marginal_error,'sens':sens,'spec':spec,'PYY':PYY,'PNN':PNN,'PYN':PYN,'PNY':PNY,'indices_train':indices_train,'indices_test':indices_test}
+    
+# esta branch es test
