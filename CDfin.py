@@ -880,7 +880,7 @@ class Dataframe(pd.DataFrame):
         import pandas as pd
         joint_freq = pd.crosstab(self[category],columns='count')
         clases = list(set(self[category]))
-        joint_freq = joint_freq.reindex(index=[0,1],columns=[0,1],fill_value=0)
+        joint_freq = joint_freq.reindex(index=clases,fill_value=0)
         if freq:
             print('--------------------------------')
             print(f'    {category}   ')
