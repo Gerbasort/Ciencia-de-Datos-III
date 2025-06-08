@@ -1608,7 +1608,8 @@ class Log(RCmodel,PQmodel,PCmodel):
 
             # 3)  Generamos los conjuntos a comparar
             prob_pred = modelo_train.predict(datos_test,multiple=True)
-            prob_test = [1 if x=='Yes' else 0 for x in self.respuestas_df.iloc[indices_test,0]]
+            positive_class = [cl for cl in self.codigos_res if self.codigos_res[cl]==(1,)]
+            prob_test = [1 if x==positive_class[0] else 0 for x in self.respuestas_df.iloc[indices_test,0]]
             DF_table = Dataframe()
             DF_table['test'] = prob_test
 
