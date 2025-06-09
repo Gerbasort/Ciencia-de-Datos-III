@@ -1720,5 +1720,5 @@ class Dado():
         tita_mean = np.mean(titas)
         normal = sp.norm(0,1)
         low, high = normal.ppf([alfa/2,1-alfa/2])
-        return (tita_mean + low*tita_sd, tita_mean + high*tita_sd)
+        return {'interval':(tita_mean + low*tita_sd, tita_mean + high*tita_sd), 'titas':titas}
 
