@@ -1072,7 +1072,7 @@ class Modelo:
                 #print(self.predict(x,True))  ###
             else:
                 x = list(set(self.predictores_df.iloc[:,0]))
-            print(f'x: {x}')  ###
+            #print(f'x: {x}')  ###
             line, = plt.plot(x,self.predict(x,True),'-',color='orange')
             if show:
                 plt.show()
@@ -1608,8 +1608,10 @@ class Log(RCmodel,PQmodel,PCmodel):
 
             # 3)  Generamos los conjuntos a comparar
             prob_pred = modelo_train.predict(datos_test,multiple=True)
-            positive_class = [cl for cl in self.codigos_res[self.respuestas[0]] if self.codigos_res[self.respuestas[0]][cl]==(1,)]
-            print(positive_class)   ###
+
+            positive_class = [cl for cl in self.codigos_res[self.respuestas[0]] if self.codigos_res[self.respuestas[0]][cl]==(1,)]  # clase que devuelve 1 en el ajuste Log
+
+            #print(positive_class)   ###
             prob_test = [1 if x==positive_class[0] else 0 for x in self.respuestas_df.iloc[indices_test,0]]
             DF_table = Dataframe()
             DF_table['test'] = prob_test
