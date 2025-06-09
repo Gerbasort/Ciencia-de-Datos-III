@@ -1563,7 +1563,7 @@ class Log(RCmodel,PQmodel,PCmodel):
         SE = summary['se'].iloc[0]
         return SE
 
-    def test_model(self,train=0.8,cut=0.5): # QUIZAS implementar selección arbitraria de filas
+    def test_model(self,train=0.8,cut=0.5,train_ind=None): # QUIZAS implementar selección arbitraria de filas
         '''
         ======================================
         Realiza un testeo por cross validation
@@ -1572,24 +1572,33 @@ class Log(RCmodel,PQmodel,PCmodel):
             - train:  porcentaje de datos de entrenamiento
             - cut:  a partir de qué porcentaje son considerados
                     positivos
+            - train_ind: índices de los datos de entrenamiento (alternativa a train) 
         '''
         import random
         cache = True
         try:
-            self.cache
+            self.cache  #el cache sirve para mantener los índices a través de diferentes cortes y poder iterar sin reajustar los modelos.
         except:
             cache = False
 
         if not cache or self.cache == {}:
             n = len(self.__df.iloc[:,0])
 
-            #print(n)
-            n_train = int(n*train)
-            n_test = n-n_train
-            #print(n_train)
-            indices_train = random.sample(range(n),n_train)
-            indices_train.sort()
-            indices_test = [i for i in range(n) if i not in indices_train]
+            if train_ind != None: 
+
+                #print(n)
+                n_train = int(n*train)
+                n_test = n-n_train
+                #print(n_train)
+                indices_train = random.sample(range(n),n_train)
+                indices_train.sort()
+                indices_test = [i for i in range(n) if i not in indices_train]
+
+            else:
+                indices_train = train_ind
+                indices_train.sort()
+                indices_test = [x for x in range(n) if x not in indices_train]
+                n_test = len(indices_test)
 
             df_train = self.__df.iloc[indices_train,:].reset_index(drop=True)  ### MUY IMPORTANTE
             DF_train = Dataframe(df_train,columns=df_train.columns)
@@ -1597,6 +1606,7 @@ class Log(RCmodel,PQmodel,PCmodel):
             #print(self.predictores) ###
             #print(self.respuestas)  ###
             #print(self.codigos_res) ###
+
             # 1)  modelo que queremos testear
             modelo_train = Log(df=DF_train,predictor=self.predictores,respuesta=self.respuestas,**self.codigos_res)
 
@@ -1616,6 +1626,7 @@ class Log(RCmodel,PQmodel,PCmodel):
             DF_table = Dataframe()
             DF_table['test'] = prob_test
 
+            
             # 4)  Guardamos en el cache:
             self.cache = {}
             self.cache.update({'n_test':n_test,'indices_test':indices_test,'indices_train':indices_train,'prob_pred':prob_pred,'DF_table':DF_table})
@@ -1630,7 +1641,7 @@ class Log(RCmodel,PQmodel,PCmodel):
 
         DF_table = self.cache['DF_table']
         DF_table['pred'] = y_pred
-        print(DF_table) ###
+        #print(DF_table) ###
         n_test = self.cache['n_test']
         print('-----------------------------------------')
         print('     Predicciones vs Realidad (freq)    ')
