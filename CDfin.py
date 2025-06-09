@@ -14,6 +14,22 @@ import numpy as np
 #drive.mount('/content/drive')
 #datos= pd.read_csv("/content/drive/MyDrive/CDIII/archivos/salary.csv")
 
+#@title PC->Github->Colab workflow
+
+#EJECUTAR UNA VEZ
+#!git clone https://github.com/Gerbasort/Ciencia-de-Datos-III
+#drive.mount('/content/drive')
+#import sys
+#sys.path.insert(0,'content/Ciencia-de-Datos-III')
+#%cd /content/Ciencia-de-Datos-III/
+#import CDfin as cd
+
+#CADA ACTUALIZACIÓN
+#import importlib
+#!git pull origin test
+#import CDfin as cd
+#importlib.reload(cd)
+
 #@title Funciones importantes
 
 def follow(binary):
@@ -1124,6 +1140,9 @@ class RQmodel(Modelo):
         s **= 1/2
         self.__SE_residuos = s
 
+    #############################################
+    #           Métodos de usuario              #
+    #############################################
     def residuos(self):
         return self.resultado.resid
 
@@ -1675,5 +1694,31 @@ class Log(RCmodel,PQmodel,PCmodel):
         print(f'P(real: si | ajuste: no) {PYN}')
         print(f'P(real: no | ajuste: si) {PNY}')
         return {'err':marginal_error,'sens':sens,'spec':spec,'PYY':PYY,'PNN':PNN,'PYN':PYN,'PNY':PNY,'indices_train':indices_train,'indices_test':indices_test}
-    
-# esta branch es test
+
+#########################################################
+#   Cualitativas
+#########################################################
+class Dado():
+    def __init__(self,vector):
+        self.vector = vector
+        self.longitud = len(vector)
+
+    def conf_par(self,confidence=0.95):
+        import random
+        import numpy as np
+        import scipy.stats as sp
+        alfa = 1-confidence
+        n = self.longitud
+        rng = np.random.default_rng()
+        par = [1 if self.vector[i]%2 == 0 else 0 for i in range(n)]
+        titas = []
+        for i in range(5000):
+            bootstrap = rng.choice(par,size=n,replace=True)
+            tita = sum(bootstrap)/n
+            titas.append(tita)
+        tita_sd = np.std(titas)
+        tita_mean = np.mean(titas)
+        normal = sp.norm(0,1)
+        low, high = normal.ppf([alfa/2,1-alfa/2])
+        return (tita_mean + low*tita_sd, tita_mean + high*tita_sd)
+
