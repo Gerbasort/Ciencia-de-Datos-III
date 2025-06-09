@@ -1584,7 +1584,7 @@ class Log(RCmodel,PQmodel,PCmodel):
         if not cache or self.cache == {}:
             n = len(self.__df.iloc[:,0])
 
-            if train_ind != None: 
+            if train_ind == None: 
 
                 #print(n)
                 n_train = int(n*train)
