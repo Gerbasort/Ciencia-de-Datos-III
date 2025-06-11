@@ -14,6 +14,22 @@ import numpy as np
 #drive.mount('/content/drive')
 #datos= pd.read_csv("/content/drive/MyDrive/CDIII/archivos/salary.csv")
 
+#@title PC->Github->Colab workflow
+
+#EJECUTAR UNA VEZ
+#!git clone https://github.com/Gerbasort/Ciencia-de-Datos-III
+#drive.mount('/content/drive')
+#import sys
+#sys.path.insert(0,'content/Ciencia-de-Datos-III')
+#%cd /content/Ciencia-de-Datos-III/
+#import CDfin as cd
+
+#CADA ACTUALIZACIÓN
+#import importlib
+#!git pull origin test
+#import CDfin as cd
+#importlib.reload(cd)
+
 #@title Funciones importantes
 
 def follow(binary):
@@ -854,7 +870,8 @@ class Dataframe(pd.DataFrame):
         import pandas as pd
         joint_freq = pd.crosstab(self[X], self[Y])
         clases_X = list(set(self[X]))
-        joint_freq = joint_freq.reindex(index=[0,1],columns=[0,1],fill_value=0)
+        clases_Y = list(set(self[Y]))
+        joint_freq = joint_freq.reindex(index=clases_X,columns=clases_Y,fill_value=0)
         if freq:
             print('----------------------------------')
             print(f'    {X} and {Y}    ')
@@ -880,7 +897,7 @@ class Dataframe(pd.DataFrame):
         import pandas as pd
         joint_freq = pd.crosstab(self[category],columns='count')
         clases = list(set(self[category]))
-        joint_freq = joint_freq.reindex(index=[0,1],columns=[0,1],fill_value=0)
+        joint_freq = joint_freq.reindex(index=clases,fill_value=0)
         if freq:
             print('--------------------------------')
             print(f'    {category}   ')
@@ -908,7 +925,8 @@ class Dataframe(pd.DataFrame):
         import pandas as pd
         joint_freq = pd.crosstab(self[Y], self[X])
         clases_Y = list(set(self[Y]))
-        joint_freq = joint_freq.reindex(index=[0,1],columns=[0,1],fill_value=0)
+        clases_X = list(set(self[X]))
+        joint_freq = joint_freq.reindex(index=clases_Y,columns=clases_X,fill_value=0)
         joint_prob = joint_freq / joint_freq.to_numpy().sum()
         cond_prob = joint_freq.div(joint_freq.sum(axis=1), axis=0)
         print('-------------------------------')
@@ -1070,7 +1088,7 @@ class Modelo:
                 #print(self.predict(x,True))  ###
             else:
                 x = list(set(self.predictores_df.iloc[:,0]))
-            print(f'x: {x}')  ###
+            #print(f'x: {x}')  ###
             line, = plt.plot(x,self.predict(x,True),'-',color='orange')
             if show:
                 plt.show()
@@ -1122,6 +1140,9 @@ class RQmodel(Modelo):
         s **= 1/2
         self.__SE_residuos = s
 
+    #############################################
+    #           Métodos de usuario              #
+    #############################################
     def residuos(self):
         return self.resultado.resid
 
@@ -1561,7 +1582,7 @@ class Log(RCmodel,PQmodel,PCmodel):
         SE = summary['se'].iloc[0]
         return SE
 
-    def test_model(self,train=0.8,cut=0.5): # QUIZAS implementar selección arbitraria de filas
+    def test_model(self,train=0.8,cut=0.5,train_ind=None): # QUIZAS implementar selección arbitraria de filas
         '''
         ======================================
         Realiza un testeo por cross validation
@@ -1570,24 +1591,33 @@ class Log(RCmodel,PQmodel,PCmodel):
             - train:  porcentaje de datos de entrenamiento
             - cut:  a partir de qué porcentaje son considerados
                     positivos
+            - train_ind: índices de los datos de entrenamiento (alternativa a train) 
         '''
         import random
         cache = True
         try:
-            self.cache
+            self.cache  #el cache sirve para mantener los índices a través de diferentes cortes y poder iterar sin reajustar los modelos.
         except:
             cache = False
 
         if not cache or self.cache == {}:
             n = len(self.__df.iloc[:,0])
 
-            #print(n)
-            n_train = int(n*train)
-            n_test = n-n_train
-            #print(n_train)
-            indices_train = random.sample(range(n),n_train)
-            indices_train.sort()
-            indices_test = [i for i in range(n) if i not in indices_train]
+            if train_ind == None: 
+
+                #print(n)
+                n_train = int(n*train)
+                n_test = n-n_train
+                #print(n_train)
+                indices_train = random.sample(range(n),n_train)
+                indices_train.sort()
+                indices_test = [i for i in range(n) if i not in indices_train]
+
+            else:
+                indices_train = train_ind
+                indices_train.sort()
+                indices_test = [x for x in range(n) if x not in indices_train]
+                n_test = len(indices_test)
 
             df_train = self.__df.iloc[indices_train,:].reset_index(drop=True)  ### MUY IMPORTANTE
             DF_train = Dataframe(df_train,columns=df_train.columns)
@@ -1595,6 +1625,7 @@ class Log(RCmodel,PQmodel,PCmodel):
             #print(self.predictores) ###
             #print(self.respuestas)  ###
             #print(self.codigos_res) ###
+
             # 1)  modelo que queremos testear
             modelo_train = Log(df=DF_train,predictor=self.predictores,respuesta=self.respuestas,**self.codigos_res)
 
@@ -1606,10 +1637,15 @@ class Log(RCmodel,PQmodel,PCmodel):
 
             # 3)  Generamos los conjuntos a comparar
             prob_pred = modelo_train.predict(datos_test,multiple=True)
-            prob_test = [1 if x=='Yes' else 0 for x in self.respuestas_df.iloc[indices_test,0]]
+
+            positive_class = [cl for cl in self.codigos_res[self.respuestas[0]] if self.codigos_res[self.respuestas[0]][cl]==(1,)]  # clase que devuelve 1 en el ajuste Log
+
+            #print(positive_class)   ###
+            prob_test = [1 if x==positive_class[0] else 0 for x in self.respuestas_df.iloc[indices_test,0]]
             DF_table = Dataframe()
             DF_table['test'] = prob_test
 
+            
             # 4)  Guardamos en el cache:
             self.cache = {}
             self.cache.update({'n_test':n_test,'indices_test':indices_test,'indices_train':indices_train,'prob_pred':prob_pred,'DF_table':DF_table})
@@ -1624,6 +1660,7 @@ class Log(RCmodel,PQmodel,PCmodel):
 
         DF_table = self.cache['DF_table']
         DF_table['pred'] = y_pred
+        #print(DF_table) ###
         n_test = self.cache['n_test']
         print('-----------------------------------------')
         print('     Predicciones vs Realidad (freq)    ')
@@ -1657,5 +1694,68 @@ class Log(RCmodel,PQmodel,PCmodel):
         print(f'P(real: si | ajuste: no) {PYN}')
         print(f'P(real: no | ajuste: si) {PNY}')
         return {'err':marginal_error,'sens':sens,'spec':spec,'PYY':PYY,'PNN':PNN,'PYN':PYN,'PNY':PNY,'indices_train':indices_train,'indices_test':indices_test}
-    
-# esta branch es test
+
+#########################################################
+#   Cualitativas
+#########################################################
+class Dado():
+    def __init__(self,vector):
+        self.vector = vector
+        self.longitud = len(vector)
+        self.observaciones = sum(self.vector)
+
+    def conf_par(self,confidence=0.95):
+        import random
+        import numpy as np
+        import scipy.stats as sp
+        alfa = 1-confidence
+        n = self.longitud
+        rng = np.random.default_rng()
+        par = [1 if self.vector[i]%2 == 0 else 0 for i in range(n)]
+        titas = []
+        for i in range(5000):
+            bootstrap = rng.choice(par,size=n,replace=True)
+            tita = sum(bootstrap)/n
+            titas.append(tita)
+        tita_sd = np.std(titas)
+        tita_mean = np.mean(titas)
+        normal = sp.norm(0,1)
+        low, high = normal.ppf([alfa/2,1-alfa/2])
+        return {'interval':(tita_mean + low*tita_sd, tita_mean + high*tita_sd), 'titas':titas,'sd':tita_sd,'mean':tita_mean}
+
+    def conf_val(self,val=1,confidence=0.95):
+        import random
+        import numpy as np
+        import scipy.stats as sp
+        alfa = 1-confidence
+        n = self.longitud
+        rng = np.random.default_rng()
+        par = [1 if self.vector[i] == val else 0 for i in range(n)]
+        titas = []
+        for i in range(5000):
+            bootstrap = rng.choice(par,size=n,replace=True)
+            tita = sum(bootstrap)/n
+            titas.append(tita)
+        tita_sd = np.std(titas)
+        tita_mean = np.mean(titas)
+        normal = sp.norm(0,1)
+        low, high = normal.ppf([alfa/2,1-alfa/2])
+        return {'interval':(tita_mean + low*tita_sd, tita_mean + high*tita_sd), 'titas':titas, 'sd':tita_sd, 'mean':tita_mean}
+
+    def chi_test(self,exp):
+        '''
+            Recibe:
+                - exp(array): vector de probabilidades esperado
+            Devuelve:
+                test chi cuadrado de bondad de ajuste:
+                H0: Pi(observado) = Pi(esperado), para todo i
+                H1: Pi(observado) != Pi(esperado), para algún i
+
+                - p_val: p-valor del test
+                - stat: valor del estadístico chi cuadrado
+        '''
+        from scipy.stats import chisquare # bondad de ajuste
+
+        stat, p = chisquare(f_obs = self.vector, f_exp = [self.observaciones*x for x in exp])
+        return {'stat':stat,'p_val':p}
+
