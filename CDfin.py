@@ -1755,6 +1755,7 @@ class Dado():
                 - stat: valor del estadístico chi cuadrado
         '''
         from scipy.stats import chisquare # bondad de ajuste
-        stat, p = chisquare(f_obs = self.vector, f_exp = self.observaciones*exp)
+
+        stat, p = chisquare(f_obs = self.vector, f_exp = [self.observaciones*x for x in exp])
         return {'stat':stat,'p_val':p}
 
