@@ -1702,6 +1702,7 @@ class Dado():
     def __init__(self,vector):
         self.vector = vector
         self.longitud = len(vector)
+        self.observaciones = sum(self.vector)
 
     def conf_par(self,confidence=0.95):
         import random
@@ -1740,4 +1741,20 @@ class Dado():
         normal = sp.norm(0,1)
         low, high = normal.ppf([alfa/2,1-alfa/2])
         return {'interval':(tita_mean + low*tita_sd, tita_mean + high*tita_sd), 'titas':titas, 'sd':tita_sd, 'mean':tita_mean}
+
+    def chi_test(self,exp):
+        '''
+            Recibe:
+                - exp(array): vector esperado
+            Devuelve:
+                test chi cuadrado de bondad de ajuste:
+                H0: self.vector = self.observaciones*exp
+                H1: self.vector != self.observaciones*exp
+
+                - p_val: p-valor del test
+                - stat: valor del estadístico chi cuadrado
+        '''
+        from scipy.stats import chisquare # bondad de ajuste
+        stat, p = chisquare(f_obs = self.vector, f_exp = self.observaciones*exp)
+        return {'stat':stat,'p_val':p}
 
