@@ -1745,11 +1745,11 @@ class Dado():
     def chi_test(self,exp):
         '''
             Recibe:
-                - exp(array): vector esperado
+                - exp(array): vector de probabilidades esperado
             Devuelve:
                 test chi cuadrado de bondad de ajuste:
-                H0: self.vector = self.observaciones*exp
-                H1: self.vector != self.observaciones*exp
+                H0: Pi(observado) = Pi(esperado), para todo i
+                H1: Pi(observado) != Pi(esperado), para algún i
 
                 - p_val: p-valor del test
                 - stat: valor del estadístico chi cuadrado
