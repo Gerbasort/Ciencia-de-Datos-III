@@ -1720,5 +1720,24 @@ class Dado():
         tita_mean = np.mean(titas)
         normal = sp.norm(0,1)
         low, high = normal.ppf([alfa/2,1-alfa/2])
-        return {'interval':(tita_mean + low*tita_sd, tita_mean + high*tita_sd), 'titas':titas}
+        return {'interval':(tita_mean + low*tita_sd, tita_mean + high*tita_sd), 'titas':titas,'sd':tita_sd,'mean':tita_mean}
+
+    def conf_val(self,val=1,confidence=0.95):
+        import random
+        import numpy as np
+        import scipy.stats as sp
+        alfa = 1-confidence
+        n = self.longitud
+        rng = np.random.default_rng()
+        par = [1 if self.vector[i] == val else 0 for i in range(n)]
+        titas = []
+        for i in range(5000):
+            bootstrap = rng.choice(par,size=n,replace=True)
+            tita = sum(bootstrap)/n
+            titas.append(tita)
+        tita_sd = np.std(titas)
+        tita_mean = np.mean(titas)
+        normal = sp.norm(0,1)
+        low, high = normal.ppf([alfa/2,1-alfa/2])
+        return {'interval':(tita_mean + low*tita_sd, tita_mean + high*tita_sd), 'titas':titas, 'sd':tita_sd, 'mean':tita_mean}
 
