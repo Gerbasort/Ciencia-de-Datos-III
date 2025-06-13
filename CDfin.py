@@ -377,12 +377,12 @@ class Datos(np.ndarray):
         import numpy as np
         data = np.array(self[:, 0], dtype=np.float64)
         res_num = {
-        'Media': data.mean(),
-        'Mediana': np.median(data),
-        'Desvio': data.std(),
-        'Cuartiles': (float(np.percentile(data,25)), float(np.percentile(data,50)), float(np.percentile(data,75))),
-        'Mínimo': min(data),
-        'Máximo': max(data)
+        'Media': np.nanmean(data),
+        'Mediana': np.nanmedian(data),
+        'Desvio': np.nanstd(data),
+        'Cuartiles': (float(np.nanpercentile(data,25)), float(np.nanpercentile(data,50)), float(np.nanpercentile(data,75))),
+        'Mínimo': np.nanmin(data),
+        'Máximo': np.nanmax(data)
         }
         for estad, valor in res_num.items():
             print(f"{estad}: {np.round(valor,3)}")
